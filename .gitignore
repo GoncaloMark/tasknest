@@ -1,0 +1,62 @@
+# Go related
+/bin/
+/obj/
+/vendor/
+*.test
+*.exe
+*.out
+*.so
+*.a
+*.dSYM
+*.exe
+*.test
+*.out
+*.prof
+
+# Terraform related
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.lock.hcl
+
+# Local environment files
+.env
+*.local
+
+# IDE and editor specific
+.idea/
+*.sublime-project
+*.sublime-workspace
+.vscode/
+*.swp
+*~
+*.log
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
