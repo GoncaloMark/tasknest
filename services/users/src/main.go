@@ -50,10 +50,10 @@ func main() {
 
 	InitDB(rdsEndpoint, dbCreds.Username, dbCreds.Password, dbName)
 
-	http.HandleFunc("/", handleHealthCheck)
-	http.HandleFunc("/signup", handleSignup)
-	http.HandleFunc("/login", handleLogin)
-	http.HandleFunc("/refresh", handleTokenRefresh)
+	http.HandleFunc("GET /api/users/{$}", handleHealthCheck)
+	http.HandleFunc("POST /api/users/signup", handleSignup)
+	http.HandleFunc("POST /api/users/login", handleLogin)
+	http.HandleFunc("POST /api/users/refresh", handleTokenRefresh)
 
 	port := os.Getenv("PORT")
 	if port == "" {
