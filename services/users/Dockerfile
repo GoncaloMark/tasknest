@@ -19,5 +19,3 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/app .
 
 EXPOSE 8080
-
-CMD ["./app"]
