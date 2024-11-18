@@ -39,15 +39,15 @@ jobs:
           COGNITO_LOGOUT_LINK=$(aws ssm get-parameter --name "/cognito_logout" --query "Parameter.Value" --output text)
           echo "COGNITO_UI_LINK=$COGNITO_LOGOUT_LINK" >> $GITHUB_ENV  # Save it as an environment variable
 
-      - name: Check changes in tasks folder
-        id: tasks
-        run: |
-          echo "Checking for changes in the tasks folder"
-          git diff --exit-code --quiet ./services/tasks || echo "Changes detected in tasks folder"
-        continue-on-error: true
+      # - name: Check changes in tasks folder
+      #   id: tasks
+      #   run: |
+      #     echo "Checking for changes in the tasks folder"
+      #     git diff --exit-code --quiet ./services/tasks || echo "Changes detected in tasks folder"
+      #   continue-on-error: true
 
       - name: Build and Tag Image for Tasks Service
-        if: steps.tasks.outputs.changed == 'true' || github.event_name == 'pull_request'
+        # if: steps.tasks.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: tasks-service
@@ -74,15 +74,15 @@ jobs:
             --task-definition $TASK_REVISION \
             --force-new-deployment
 
-      - name: Check changes in users folder
-        id: users
-        run: |
-          echo "Checking for changes in users folder"
-          git diff --exit-code --quiet ./services/users || echo "Changes detected in users folder"
-        continue-on-error: true
+      # - name: Check changes in users folder
+      #   id: users
+      #   run: |
+      #     echo "Checking for changes in users folder"
+      #     git diff --exit-code --quiet ./services/users || echo "Changes detected in users folder"
+      #   continue-on-error: true
 
       - name: Build and Tag Image for Users Service
-        if: steps.users.outputs.changed == 'true' || github.event_name == 'pull_request'
+        # if: steps.users.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: users-service
@@ -109,15 +109,15 @@ jobs:
             --task-definition $TASK_REVISION \
             --force-new-deployment
 
-      - name: Check changes in frontend folder
-        id: frontend
-        run: |
-          echo "Checking for changes in the frontend folder"
-          git diff --exit-code --quiet ./frontend || echo "Changes detected in frontend folder"
-        continue-on-error: true
+      # - name: Check changes in frontend folder
+      #   id: frontend
+      #   run: |
+      #     echo "Checking for changes in the frontend folder"
+      #     git diff --exit-code --quiet ./frontend || echo "Changes detected in frontend folder"
+      #   continue-on-error: true
 
       - name: Build and Tag Image for Frontend Service
-        if: steps.frontend.outputs.changed == 'true' || github.event_name == 'pull_request'
+        # if: steps.frontend.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: frontend-service
