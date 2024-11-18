@@ -7,7 +7,8 @@ RUN go mod tidy
 
 COPY . . 
 
-RUN go build CGO_ENABLED=0 GOOS=linux go build -ldflags="-linkmode external -extldflags -static" -o app .
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+RUN go build -ldflags="-linkmode external -extldflags -static" -o app ./src
 
 FROM scratch
 
