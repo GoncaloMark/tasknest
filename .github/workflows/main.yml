@@ -25,9 +25,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -53,7 +50,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: tasks-repo
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/tasks --push
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/tasks --push
           # Register new task definition
           TASK_DEFINITION=$(aws ecs register-task-definition \
             --family tasknest-tasks-task \
@@ -87,7 +84,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: users-repo
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/users --push
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/users --push
           # Register new task definition
           TASK_DEFINITION=$(aws ecs register-task-definition \
             --family tasknest-users-task \
@@ -123,7 +120,7 @@ jobs:
           COGNITO_UI_LINK: ${{ env.COGNITO_UI_LINK }} 
           COGNITO_LOGOUT_LINK: ${{ env.COGNITO_LOGOUT_LINK }}
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./frontend --push
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./frontend --push
           # Register new task definition
           TASK_DEFINITION=$(aws ecs register-task-definition \
             --family tasknest-frontend-task \
