@@ -6,7 +6,6 @@ interface NavbarProps {
     filter: string;
     onFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     isLoggedIn: boolean;
-    username?: string;
     email?: string;
 }
 
@@ -14,8 +13,7 @@ const Navbar: React.FC<NavbarProps> = ({
     onCreateTodo, 
     filter, 
     onFilterChange, 
-    isLoggedIn, 
-    username, 
+    isLoggedIn,  
     email
 }) => {
     const handleCognitoLogin = () => {
@@ -59,7 +57,6 @@ const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                     <>
                         <li className="mb-2 text-center text-gray-200">
-                            <div className="text-sm">{username}</div>
                             <div className="text-xs text-gray-400">{email}</div>
                         </li>
 

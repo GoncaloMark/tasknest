@@ -70,6 +70,8 @@ function App() {
         onCreateTodo={() => setShowForm(true)}
         filter={filter}
         onFilterChange={handleFilterChange}
+        email='ah'
+        isLoggedIn={false}
       />
 
       <div className="flex-grow p-4 overflow-auto">
