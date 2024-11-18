@@ -20,7 +20,4 @@ COPY --from=builder /app/app .
 
 EXPOSE 8080
 
-RUN adduser -D lnx
-USER lnx
-
 CMD ["./app"]
