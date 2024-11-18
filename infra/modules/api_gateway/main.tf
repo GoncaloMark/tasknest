@@ -18,6 +18,11 @@ resource "aws_apigatewayv2_authorizer" "lambda_authorizer" {
     identity_sources = ["$request.header.cookie.id_token"]
     authorizer_payload_format_version = "2.0"
 }
+resource "aws_apigatewayv2_route" "health_check" {
+    api_id    = aws_apigatewayv2_api.main.id
+    route_key = "ANY /api/tasks/"
+    target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
+}
 
 resource "aws_apigatewayv2_route" "proxy_protected" {
     api_id    = aws_apigatewayv2_api.main.id
