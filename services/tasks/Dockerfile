@@ -8,7 +8,7 @@ RUN go mod tidy
 COPY . . 
 
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-RUN go build -ldflags="-linkmode external -extldflags -static" -o app ./src
+RUN go build -o app ./src
 
 FROM scratch
 
@@ -24,5 +24,3 @@ RUN adduser -D lnx
 USER lnx
 
 CMD ["./app"]
-
-HEALTHCHECK CMD curl --fail http://localhost:8080/ || exit 1
