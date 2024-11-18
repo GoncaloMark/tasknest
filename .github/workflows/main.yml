@@ -61,6 +61,7 @@ jobs:
             --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
             --container-definitions "[{\"name\":\"tasks\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tasks:${{ github.sha }}\",\"memory\":512,\"cpu\":256,\"essential\":true,\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}],\"environment\":[{\"name\":\"AWS_REGION\",\"value\":\"${{ secrets.AWS_REGION }}\"}]}]"
 
+
           
           TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
           
