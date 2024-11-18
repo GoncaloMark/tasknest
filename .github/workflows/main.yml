@@ -71,6 +71,11 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./fe --push
           
         
+      - name: Get AWS Account ID
+        id: get-aws-account
+        run: |
+            ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+            echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
 
       - name: Update ECS service with new task definition
         run: |
