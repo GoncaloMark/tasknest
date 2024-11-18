@@ -1,0 +1,147 @@
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+name: Build and Push
+jobs:
+  build:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Get Cognito UI Link from SSM
+        id: get-ssm-parameter
+        run: |
+          COGNITO_UI_LINK=$(aws ssm get-parameter --name "/cognito_ui" --query "Parameter.Value" --output text)
+          echo "COGNITO_UI_LINK=$COGNITO_UI_LINK" >> $GITHUB_ENV  # Save it as an environment variable
+          COGNITO_LOGOUT_LINK=$(aws ssm get-parameter --name "/cognito_logout" --query "Parameter.Value" --output text)
+          echo "COGNITO_UI_LINK=$COGNITO_LOGOUT_LINK" >> $GITHUB_ENV  # Save it as an environment variable
+
+      - name: Check changes in tasks folder
+        id: tasks
+        run: |
+          echo "Checking for changes in the tasks folder"
+          git diff --exit-code --quiet ./services/tasks || echo "Changes detected in tasks folder"
+        continue-on-error: true
+
+      - name: Build and Tag Image for Tasks Service
+        if: steps.tasks.outputs.changed == 'true' || github.event_name == 'pull_request'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: tasks-service
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./services/tasks --push
+          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/tasks --push
+          # Register new task definition
+          TASK_DEFINITION=$(aws ecs register-task-definition \
+            --family tasknest-tasks-task \
+            --network-mode awsvpc \
+            --requires-compatibilities "FARGATE" \
+            --cpu "256" \
+            --memory "512" \
+            --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --container-definitions "[{\"name\":\"tasks\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tasks:${{ github.sha }}\",\"memory\": 512,\"cpu\": 256,\"essential\":true,\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}],\"environment\":[{\"name\":\"AWS_REGION\",\"value\":\"${{ secrets.AWS_REGION }}\"}]}]"
+          
+          # Get the task definition ARN
+          TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
+          
+          # Update the service with the new task definition
+          aws ecs update-service \
+            --cluster tasknest-ecs-cluster \
+            --service tasknest-tasks-service \
+            --task-definition $TASK_REVISION \
+            --force-new-deployment
+
+      - name: Check changes in users folder
+        id: users
+        run: |
+          echo "Checking for changes in users folder"
+          git diff --exit-code --quiet ./services/users || echo "Changes detected in users folder"
+        continue-on-error: true
+
+      - name: Build and Tag Image for Users Service
+        if: steps.users.outputs.changed == 'true' || github.event_name == 'pull_request'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: users-service
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./services/users --push
+          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/users --push
+          # Register new task definition
+          TASK_DEFINITION=$(aws ecs register-task-definition \
+            --family tasknest-users-task \
+            --network-mode awsvpc \
+            --requires-compatibilities "FARGATE" \
+            --cpu "256" \
+            --memory "512" \
+            --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --container-definitions "[{\"name\":\"users\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/users:${{ github.sha }}\",\"memory\": 512,\"cpu\": 256,\"essential\":true,\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}],\"environment\":[{\"name\":\"AWS_REGION\",\"value\":\"${{ secrets.AWS_REGION }}\"}]}]"
+          
+          # Get the task definition ARN
+          TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
+          
+          # Update the service with the new task definition
+          aws ecs update-service \
+            --cluster tasknest-ecs-cluster \
+            --service tasknest-users-service \
+            --task-definition $TASK_REVISION \
+            --force-new-deployment
+
+      - name: Check changes in frontend folder
+        id: frontend
+        run: |
+          echo "Checking for changes in the frontend folder"
+          git diff --exit-code --quiet ./frontend || echo "Changes detected in frontend folder"
+        continue-on-error: true
+
+      - name: Build and Tag Image for Frontend Service
+        if: steps.frontend.outputs.changed == 'true' || github.event_name == 'pull_request'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: frontend-service
+          COGNITO_UI_LINK: ${{ env.COGNITO_UI_LINK }} 
+          COGNITO_LOGOUT_LINK: ${{ env.COGNITO_LOGOUT_LINK }}
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./frontend --push
+          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./frontend --push
+          # Register new task definition
+          TASK_DEFINITION=$(aws ecs register-task-definition \
+            --family tasknest-frontend-task \
+            --network-mode awsvpc \
+            --requires-compatibilities "FARGATE" \
+            --cpu "256" \
+            --memory "512" \
+            --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --container-definitions "[{\"name\":\"frontend\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:${{ github.sha }}\",\"memory\": 512,\"cpu\": 256,\"essential\":true,\"portMappings\":[{\"containerPort\":80,\"hostPort\":80}],\"environment\":[{\"name\":\"REACT_APP_COGNITO_UI\",\"value\":\"${{ env.COGNITO_UI_LINK }}\"},{\"name\":\"REACT_APP_COGNITO_LOGOUT\",\"value\":\"${{ env.COGNITO_LOGOUT_LINK }}\"}]}]"
+          
+          # Get the task definition ARN
+          TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
+          
+          # Update the service with the new task definition
+          aws ecs update-service \
+            --cluster tasknest-ecs-cluster \
+            --service tasknest-frontend-service \
+            --task-definition $TASK_REVISION \
+            --force-new-deployment
