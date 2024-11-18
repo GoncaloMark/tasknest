@@ -49,6 +49,13 @@ resource "aws_ssm_parameter" "db_name" {
     description = "The name of the database"
 }
 
+resource "aws_ssm_parameter" "cognito_ui" {
+    name        = "cognito_ui"
+    type        = "String"
+    value       = var.cognito_ui
+    description = "The endpoint of the cognito UI"
+}
+
 resource "aws_vpc_endpoint" "ec2_messages" {
     service_name = "com.amazonaws.us-east-1.ec2messages"
     vpc_id       = var.vpc_id

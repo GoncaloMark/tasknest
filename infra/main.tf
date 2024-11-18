@@ -333,4 +333,5 @@ module "ssm" {
     vpc_id = module.vpc.vpc_id
     aws_region = var.aws_region
     private_subnet_ids = module.vpc.private_subnet_ids 
+    cognito_ui = module.cognito.cognito_ui
 }

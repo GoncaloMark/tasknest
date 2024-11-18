@@ -1,6 +1,6 @@
-# Cognito User Pool for Buyers
+# Cognito User Pool for 
 resource "aws_cognito_user_pool" "user_pool" {
-  name                = "${var.project_name}-buyers"
+  name                = "${var.project_name}"
   username_attributes = ["email"]
   auto_verified_attributes = ["email"]
 
@@ -40,9 +40,9 @@ resource "aws_cognito_user_pool" "user_pool" {
   }
 }
 
-# Cognito User Pool Client for Buyers
+# Cognito User Pool Client for 
 resource "aws_cognito_user_pool_client" "user_pool_client" {
-  name                   = "${var.project_name}-buyers-client"
+  name                   = "${var.project_name}-client"
   user_pool_id           = aws_cognito_user_pool.user_pool.id
   generate_secret        = true
   allowed_oauth_flows    = ["code"]
@@ -52,9 +52,9 @@ resource "aws_cognito_user_pool_client" "user_pool_client" {
   supported_identity_providers = ["COGNITO"]
 }
 
-# Cognito User Pool Domain for Buyers
+# Cognito User Pool Domain for 
 resource "aws_cognito_user_pool_domain" "user_pool_domain" {
-  domain       = "${var.project_name}-buyers-auth"
+  domain       = "${var.project_name}-auth"
   user_pool_id = aws_cognito_user_pool.user_pool.id
 }
 
@@ -67,7 +67,7 @@ resource "aws_s3_object" "login_url" {
   bucket = aws_s3_bucket.url_bucket.id
   key    = "login_url.json"
   content = jsonencode({
-    buyers_url = "https://${aws_cognito_user_pool_domain.user_pool_domain.domain}.auth.${var.aws_region}.amazoncognito.com/oauth2/authorize?client_id=${aws_cognito_user_pool_client.user_pool_client.id}&response_type=code&scope=email+openid&redirect_uri=https%3A%2F%2Fgoogle.com"
+    url = "https://${aws_cognito_user_pool_domain.user_pool_domain.domain}.auth.${var.aws_region}.amazoncognito.com/oauth2/authorize?client_id=${aws_cognito_user_pool_client.user_pool_client.id}&response_type=code&scope=email+openid&redirect_uri=https%3A%2F%2Fgoogle.com"
   })
 }
 
@@ -106,4 +106,8 @@ resource "aws_s3_bucket_cors_configuration" "url_bucket_cors" {
     expose_headers = ["ETag"]
     max_age_seconds = 3000
   }
+}
+
+output "cognito_ui" {
+  value = "https://${aws_cognito_user_pool_domain.user_pool_domain.domain}.auth.${var.aws_region}.amazoncognito.com/oauth2/authorize?client_id=${aws_cognito_user_pool_client.user_pool_client.id}&response_type=code&scope=email+openid&redirect_uri=https%3A%2F%2Fgoogle.com"
 }

@@ -19,3 +19,7 @@ variable "aws_region" {
 variable "private_subnet_ids" {
     type = list(string)
 }
+
+variable "cognito_ui"{
+    type = string
+}
