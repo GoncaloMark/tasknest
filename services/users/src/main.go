@@ -17,6 +17,10 @@ import (
 var (
 	cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
 	clientID      string
+	cognitoDomain string
+	frontendURL   string
+	redirectURL   string
+	userPoolID    string
 	db            *gorm.DB
 )
 
@@ -37,6 +41,11 @@ func main() {
 
 	ssmClient := ssm.New(awsSession)
 	clientID = getParameter(ssmClient, "cognito_client_id")
+	cognitoDomain = getParameter(ssmClient, "cognito_domain")
+	frontendURL = getParameter(ssmClient, "frontend_url")
+	redirectURL = getParameter(ssmClient, "redirect_uri")
+	userPoolID = getParameter(ssmClient, "userpool_id")
+
 	cognitoClient = cognitoidentityprovider.New(awsSession)
 
 	secretsManagerClient := secretsmanager.New(awsSession)
@@ -51,9 +60,10 @@ func main() {
 	InitDB(rdsEndpoint, dbCreds.Username, dbCreds.Password, dbName)
 
 	http.HandleFunc("GET /api/users/{$}", handleHealthCheck)
-	http.HandleFunc("POST /api/users/signup", handleSignup)
-	http.HandleFunc("POST /api/users/login", handleLogin)
-	http.HandleFunc("POST /api/users/refresh", handleTokenRefresh)
+	http.HandleFunc("/api/users/callback", handleCognitoCallback)
+	http.HandleFunc("/api/users/logout", handleLogoutCallback)
+	http.HandleFunc("/api/users/auth/check", handleAuthCheck)
+	http.HandleFunc("/api/users/refresh", handleTokenRefresh)
 
 	port := os.Getenv("PORT")
 	if port == "" {

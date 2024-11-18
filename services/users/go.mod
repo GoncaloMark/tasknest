@@ -4,6 +4,7 @@ go 1.23.2
 
 require (
 	github.com/aws/aws-sdk-go v1.55.5
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/jinzhu/gorm v1.9.16
 )
