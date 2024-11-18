@@ -50,9 +50,8 @@ jobs:
         # if: steps.tasks.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: tasks-service
+          ECR_REPOSITORY: tasks
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./services/tasks --push
           docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/tasks --push
           # Register new task definition
           TASK_DEFINITION=$(aws ecs register-task-definition \
@@ -85,9 +84,8 @@ jobs:
         # if: steps.users.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: users-service
+          ECR_REPOSITORY: users
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./services/users --push
           docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/users --push
           # Register new task definition
           TASK_DEFINITION=$(aws ecs register-task-definition \
@@ -120,11 +118,10 @@ jobs:
         # if: steps.frontend.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: frontend-service
+          ECR_REPOSITORY: frontend
           COGNITO_UI_LINK: ${{ env.COGNITO_UI_LINK }} 
           COGNITO_LOGOUT_LINK: ${{ env.COGNITO_LOGOUT_LINK }}
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./frontend --push
           docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./frontend --push
           # Register new task definition
           TASK_DEFINITION=$(aws ecs register-task-definition \
