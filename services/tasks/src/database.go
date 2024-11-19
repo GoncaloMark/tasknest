@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -8,15 +9,29 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-func InitDB(rdsEndpoint, dbUser, dbPassword, dbName string) {
+func InitDB(rdsEndpoint, dbUser, dbPassword, dbName string) (*gorm.DB, error) {
 	parts := strings.Split(rdsEndpoint, ":")
+
 	host := parts[0]
-	dsn := "host=" + host + " user=" + dbUser + " password=" + dbPassword + " dbname=" + dbName + " port=5432 sslmode=require"
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=5432 sslmode=require",
+		host, dbUser, dbPassword, dbName,
+	)
+
 	db, err := gorm.Open("postgres", dsn)
 	if err != nil {
-		log.Fatal("Failed to connect to the database:", err)
-		return
+		return nil, fmt.Errorf("failed to connect to the database: %w", err)
 	}
 
-	db.AutoMigrate(&User{})
+	if err := db.AutoMigrate(&User{}).Error; err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	if err := db.DB().Ping(); err != nil {
+		return nil, fmt.Errorf("database connection test failed: %w", err)
+	}
+
+	log.Println("Database initialized successfully")
+
+	return db, nil
 }

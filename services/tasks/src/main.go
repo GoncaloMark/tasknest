@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -37,15 +38,24 @@ func main() {
 	ssmClient := ssm.NewFromConfig(cfg)
 
 	secretsManagerClient := secretsmanager.NewFromConfig(cfg)
-	dbCreds, err := getSecretValue(secretsManagerClient, "postgres", ctx)
+	val, err := getSecretValue(secretsManagerClient, "postgres", ctx)
 	if err != nil {
 		log.Fatal("Can't get credentials:", err)
+	}
+
+	var creds DBCreds
+	if err := json.Unmarshal(val, &creds); err != nil {
+		log.Fatalf("unable to parse secret: %v", err)
 	}
 
 	rdsEndpoint := getParameter(ssmClient, "rds_endpoint", ctx)
 	dbName := getParameter(ssmClient, "db_name", ctx)
 
-	InitDB(rdsEndpoint, dbCreds.Username, dbCreds.Password, dbName)
+	db, err = InitDB(rdsEndpoint, creds.Username, creds.Password, dbName)
+	if err != nil {
+		log.Fatalf("Error initializing database: %v\n", err)
+	}
+	defer db.Close()
 
 	http.HandleFunc("GET /api/tasks/{$}", handleHealthCheck)
 	http.HandleFunc("POST /api/tasks/create", handleCreateTask)

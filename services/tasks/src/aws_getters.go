@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -23,7 +22,7 @@ func getParameter(ssmClient *ssm.Client, parameterName string, ctx context.Conte
 	return aws.ToString(param.Parameter.Value)
 }
 
-func getSecretValue(secretsManagerClient *secretsmanager.Client, secretID string, ctx context.Context) (*DBCreds, error) {
+func getSecretValue(secretsManagerClient *secretsmanager.Client, secretID string, ctx context.Context) ([]byte, error) {
 	output, err := secretsManagerClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretID),
 	})
@@ -31,10 +30,5 @@ func getSecretValue(secretsManagerClient *secretsmanager.Client, secretID string
 		return nil, fmt.Errorf("unable to retrieve secret %s: %v", secretID, err)
 	}
 
-	var creds DBCreds
-	if err := json.Unmarshal([]byte(*output.SecretString), &creds); err != nil {
-		return nil, fmt.Errorf("unable to parse secret: %v", err)
-	}
-
-	return &creds, nil
+	return []byte(*output.SecretString), nil
 }
