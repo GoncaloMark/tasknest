@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -60,7 +62,9 @@ func handleCognitoCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenURL := fmt.Sprintf("https://%s/oauth2/token", cognitoDomain)
+	log.Printf("Cognito Domain: %s", cognitoDomain)
+
+	tokenURL := fmt.Sprintf("%s/oauth2/token", cognitoDomain)
 
 	reqBody := url.Values{}
 	reqBody.Set("grant_type", "authorization_code")
@@ -78,12 +82,16 @@ func handleCognitoCallback(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Printf("Error When Sending Token: %v\n", err)
 		http.Error(w, "Failed to send token exchange request", http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("Response Body: %s\n", string(bodyBytes))
+		log.Printf("Status Code: %d\n", resp.StatusCode)
 		http.Error(w, "Token exchange failed", http.StatusUnauthorized)
 		return
 	}

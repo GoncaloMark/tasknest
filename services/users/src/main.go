@@ -69,7 +69,11 @@ func main() {
 	rdsEndpoint := getParameter(ssmClient, "rds_endpoint", ctx)
 	dbName := getParameter(ssmClient, "db_name", ctx)
 
-	InitDB(rdsEndpoint, creds.Username, creds.Password, dbName)
+	db, err = InitDB(rdsEndpoint, creds.Username, creds.Password, dbName)
+	if err != nil {
+		log.Fatalf("Error initializing database: %v\n", err)
+	}
+	defer db.Close()
 
 	val, err = getSecretValue(secretsManagerClient, "cognitoSecret", ctx)
 	if err != nil {
