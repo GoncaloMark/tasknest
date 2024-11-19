@@ -102,3 +102,10 @@ resource "aws_ssm_parameter" "userpool_id" {
     value       = var.userpool_id
     description = "URL for Redirect on CF"
 }
+
+resource "aws_ssm_parameter" "cognito_client_id" {
+    name        = "cognito_client_id"
+    type        = "String"
+    value       = var.cognito_client_id
+    description = "Client ID"
+}

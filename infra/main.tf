@@ -16,6 +16,7 @@ module "ssm" {
     frontend_url = "https://${module.cloudfront.domain_name}/"
     userpool_id = module.cognito.user_pool_id
     cognito_logout = module.cognito.cognito_logout
+    cognito_client_id = module.cognito.user_pool_client_id
 }
 
 module "vpc" {
@@ -118,6 +119,7 @@ resource "aws_iam_policy" "ecs_task_policy" {
                     data.aws_ssm_parameter.frontend_url.arn,
                     data.aws_ssm_parameter.redirect_uri.arn,
                     data.aws_ssm_parameter.userpool_id.arn,
+                    data.aws_ssm_parameter.cognito_client_id.arn
                 ]
             }
         ]
@@ -150,6 +152,11 @@ data "aws_ssm_parameter" "frontend_url" {
 
 data "aws_ssm_parameter" "redirect_uri" {
     name = "/redirect_uri"
+    depends_on = [module.ssm]
+}
+
+data "aws_ssm_parameter" "cognito_client_id" {
+    name = "/cognito_client_id"
     depends_on = [module.ssm]
 }
 
@@ -205,6 +212,7 @@ resource "aws_iam_policy" "ecs_execution_policy" {
                     data.aws_ssm_parameter.frontend_url.arn,
                     data.aws_ssm_parameter.redirect_uri.arn,
                     data.aws_ssm_parameter.userpool_id.arn,
+                    data.aws_ssm_parameter.cognito_client_id.arn,
                 ]
             }
         ]
@@ -240,7 +248,7 @@ resource "aws_security_group" "ecs_service_sg" {
         from_port   = 80
         to_port     = 80
         protocol    = "tcp"
-        cidr_blocks = ["0.0.0.0/0"]  # Change this to restrict access as needed
+        cidr_blocks = ["0.0.0.0/0"]  
     }
 
     ingress {
@@ -268,7 +276,21 @@ resource "aws_security_group" "ecs_service_sg" {
         from_port   = 5432
         to_port     = 5432
         protocol    = "tcp"
-        security_groups = [module.security_groups.db_sg_id] # Security group of the RDS instance
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    ingress {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        security_groups = [module.security_groups.db_sg_id] // Allow inbound from RDS security group
+    }
+
+    egress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1" 
+        cidr_blocks = ["0.0.0.0/0"] 
     }
 
     tags = {

@@ -43,3 +43,7 @@ variable "redirect_uri" {
 variable "frontend_url" {
     type = string
 }
+
+variable "cognito_client_id" {
+    type = string
+}
