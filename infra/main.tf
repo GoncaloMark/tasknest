@@ -189,7 +189,7 @@ resource "aws_iam_policy" "ecs_execution_policy" {
                 Action = [
                     "secretsmanager:GetSecretValue"
                 ],
-                Resource = "arn:aws:secretsmanager:*:*:secret:*"
+                Resource = data.aws_secretsmanager_secret.db_secret.arn
                 },
                 {
                 Effect = "Allow",
@@ -198,7 +198,14 @@ resource "aws_iam_policy" "ecs_execution_policy" {
                     "ssm:GetParameters",
                     "ssm:GetParametersByPath"
                 ],
-                Resource = "arn:aws:ssm:*:*:parameter/*"
+                Resource = [
+                    data.aws_ssm_parameter.db_name.arn,
+                    data.aws_ssm_parameter.rds_endpoint.arn,
+                    data.aws_ssm_parameter.cognito_domain.arn,
+                    data.aws_ssm_parameter.frontend_url.arn,
+                    data.aws_ssm_parameter.redirect_uri.arn,
+                    data.aws_ssm_parameter.userpool_id.arn,
+                ]
             }
         ]
     })
@@ -255,6 +262,13 @@ resource "aws_security_group" "ecs_service_sg" {
         to_port     = 443
         protocol    = "tcp"
         cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    egress {
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        security_groups = [module.security_groups.db_sg_id] # Security group of the RDS instance
     }
 
     tags = {

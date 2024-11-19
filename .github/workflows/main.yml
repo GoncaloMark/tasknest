@@ -76,6 +76,7 @@ jobs:
             --cpu "256" \
             --memory "512" \
             --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --task-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-task-role \
             --container-definitions "[{
                 \"name\": \"frontend\",
                 \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend-repo:${{ github.sha }}\",
@@ -113,6 +114,7 @@ jobs:
             --cpu "256" \
             --memory "512" \
             --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --task-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-task-role \
             --container-definitions "[{
                 \"name\": \"users\",
                 \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/users-repo:${{ github.sha }}\",
@@ -147,6 +149,7 @@ jobs:
             --cpu "256" \
             --memory "512" \
             --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --task-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-task-role \
             --container-definitions "[{
                 \"name\": \"tasks\",
                 \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tasks-repo:${{ github.sha }}\",
