@@ -58,7 +58,14 @@ jobs:
           COGNITO_UI_LINK: ${{ env.COGNITO_UI_LINK }} 
           COGNITO_LOGOUT_LINK: ${{ env.COGNITO_LOGOUT_LINK }}
         run: |
-          docker build --build-arg REACT_APP_COGNITO_UI=${{ env.COGNITO_UI_LINK }} --build-arg REACT_APP_COGNITO_LOGOUT=${{ env.COGNITO_LOGOUT_LINK }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./fe --push
+          docker build \
+              --build-arg REACT_APP_COGNITO_UI="${{ env.COGNITO_UI_LINK }}" \
+              --build-arg REACT_APP_COGNITO_LOGOUT="${{ env.COGNITO_LOGOUT_LINK }}" \
+              -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" \
+              ./fe
+
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+
 
       - name: Get AWS Account ID
         id: get-aws-account
