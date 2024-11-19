@@ -24,3 +24,11 @@ variable "cognito_user_pool_id"{
 variable "cognito_app_client_id" {
     type = string
 }
+
+variable "db_name_arn" {
+    type = string
+}
+
+variable "rds_endpoint_arn"{
+    type = string
+}

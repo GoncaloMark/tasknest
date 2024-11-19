@@ -366,6 +366,8 @@ module "lambda" {
     cognito_app_client_id = module.cognito.user_pool_client_id
     cognito_user_pool_id = module.cognito.user_pool_id
     aws_region = var.aws_region
+    rds_endpoint_arn = data.aws_ssm_parameter.rds_endpoint.arn
+    db_name_arn = data.aws_ssm_parameter.db_name.arn
 
     depends_on = [
         module.vpc

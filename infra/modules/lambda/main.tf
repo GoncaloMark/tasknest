@@ -46,8 +46,8 @@ resource "aws_iam_policy" "lambda_policy" {
             ],  
         Effect   = "Allow",
         Resource = [
-          data.aws_ssm_parameter.db_name.arn,
-          data.aws_ssm_parameter.rds_endpoint.arn
+          var.db_name_arn,
+          var.rds_endpoint_arn
         ]
       }
     ]
@@ -140,14 +140,6 @@ resource "aws_iam_role" "lambda_authorizer_role" {
   })
 }
 
-data "aws_ssm_parameter" "db_name" {
-  name = "/db_name"
-}
-
-data "aws_ssm_parameter" "rds_endpoint" {
-  name = "/rds_endpoint"
-}
-
 # Lambda Policy for Accessing Cognito Public Keys (JWKS) and CloudWatch Logging
 resource "aws_iam_policy" "lambda_authorizer_policy" {
   name = "lambda_authorizer_policy"
@@ -177,8 +169,8 @@ resource "aws_iam_policy" "lambda_authorizer_policy" {
             ],  
         Effect   = "Allow",
         Resource = [
-        data.aws_ssm_parameter.db_name.arn,
-        data.aws_ssm_parameter.rds_endpoint.arn
+        var.db_name_arn,
+        var.rds_endpoint_arn
         ]
       }
     ]
