@@ -26,7 +26,8 @@ func getEnv(key, defaultValue string) string {
 
 func main() {
 	awsSession, err := session.NewSession(&aws.Config{
-		Region: aws.String(getEnv("AWS_REGION", "us-east-1")),
+		Region:                        aws.String(getEnv("AWS_REGION", "us-east-1")),
+		CredentialsChainVerboseErrors: aws.Bool(true),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create AWS session: %v", err)
