@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -196,14 +197,14 @@ func handleTokenRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := &cognitoidentityprovider.InitiateAuthInput{
-		AuthFlow: aws.String("REFRESH_TOKEN_AUTH"),
+		AuthFlow: types.AuthFlowTypeRefreshTokenAuth,
 		ClientId: aws.String(clientID),
-		AuthParameters: map[string]*string{
-			"REFRESH_TOKEN": aws.String(refreshTokenCookie.Value),
+		AuthParameters: map[string]string{
+			"REFRESH_TOKEN": refreshTokenCookie.Value,
 		},
 	}
 
-	result, err := cognitoClient.InitiateAuth(input)
+	result, err := cognitoClient.InitiateAuth(r.Context(), input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return

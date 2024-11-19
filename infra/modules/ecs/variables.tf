@@ -46,8 +46,20 @@ variable "container_definitions" {
         essential = true
         portMappings = [
             {
-            containerPort = 3000
-            hostPort      = 3000
+            containerPort = 8080
+            hostPort      = 8080
+            }
+        ]
+        },
+
+        {
+        name  = "tasks"
+        image = "public.ecr.aws/ecs-sample-image/amazon-ecs-sample:latest"
+        essential = true
+        portMappings = [
+            {
+            containerPort = 8080
+            hostPort      = 8080
             }
         ]
         },
@@ -66,33 +78,6 @@ variable "container_definitions" {
     ]
 }
 
-
-        # {
-        # name  = "users"
-        # image = "908776941646.dkr.ecr.us-east-1.amazonaws.com/users-repo:latest"
-        # memory = 512
-        # cpu    = 256
-        # essential = true
-        # portMappings = [
-        #     {
-        #     containerPort = 3000
-        #     hostPort      = 3000
-        #     }
-        # ]
-        # },
-        # {
-        # name  = "frontend"
-        # image = "908776941646.dkr.ecr.us-east-1.amazonaws.com/frontend-repo:latest"
-        # memory = 512
-        # cpu    = 256
-        # essential = true
-        # portMappings = [
-        #     {
-        #     containerPort = 80
-        #     hostPort      = 80
-        #     }
-        # ]
-        # }
 
 variable "desired_count" {
     description = "Desired count of running tasks"
@@ -118,4 +103,8 @@ variable "users_target_group_arn" {
 variable "frontend_target_group_arn" {
     description = "ARN of the target group for microservices"
     type        = string
+}
+
+variable "tasks_target_group_arn"{
+    type = string
 }

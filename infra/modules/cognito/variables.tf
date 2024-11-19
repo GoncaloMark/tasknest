@@ -19,12 +19,20 @@ variable "client_secret" {
 variable "cognito_user_pool_name" {
   description = "The name of the Cognito User Pool"
   type        = string
-  default     = "buyer-user-pool"
+  default     = "user-pool"
 }
 
 variable "cognito_user_pool_client_name" {
   description = "The name of the Cognito User Pool Client"
   type        = string
-  default     = "buyer-user-pool-client"
+  default     = "user-pool-client"
+}
+
+variable "callback_url"{
+  type = string
+}
+
+variable "logout_url" {
+  type = string
 }
 

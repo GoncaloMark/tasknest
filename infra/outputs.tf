@@ -62,3 +62,8 @@ output "cognito_logout_endpoint" {
   value       = "https://${module.cognito.user_pool_domain}.auth.${var.aws_region}.amazoncognito.com/logout"
 }
 
+output "cloudfront_domain" {
+  value = module.cloudfront.domain_name
+  description = "Use this value to update allowed_origins in subsequent apply"
+}
+

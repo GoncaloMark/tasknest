@@ -20,6 +20,26 @@ variable "private_subnet_ids" {
     type = list(string)
 }
 
+variable "cognito_logout" {
+    type = string
+}
+
+variable "userpool_id"{
+    type = string
+}
+
 variable "cognito_ui"{
+    type = string
+}
+
+variable "cognito_domain" {
+    type = string
+}
+
+variable "redirect_uri" {
+    type = string
+}
+
+variable "frontend_url" {
     type = string
 }

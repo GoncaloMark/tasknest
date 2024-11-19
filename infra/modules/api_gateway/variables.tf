@@ -30,3 +30,7 @@ variable "api_authorizer" {
 variable "aws_region" {
     type = string
 }
+
+variable "frontend_url" {
+    type = string
+}

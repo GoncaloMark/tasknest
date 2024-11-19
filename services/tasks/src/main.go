@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"context"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/jinzhu/gorm"
 )
 
@@ -25,24 +26,24 @@ func getEnv(key, defaultValue string) string {
 }
 
 func main() {
-	awsSession, err := session.NewSession(&aws.Config{
-		Region:                        aws.String(getEnv("AWS_REGION", "us-east-1")),
-		CredentialsChainVerboseErrors: aws.Bool(true),
-	})
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(getEnv("AWS_REGION", "us-east-1")),
+	)
 	if err != nil {
-		log.Fatalf("Failed to create AWS session: %v", err)
+		log.Fatalf("Failed to create AWS config: %v", err)
 	}
 
-	ssmClient := ssm.New(awsSession)
+	ssmClient := ssm.NewFromConfig(cfg)
 
-	secretsManagerClient := secretsmanager.New(awsSession)
-	dbCreds, err := getSecretValue(secretsManagerClient, "postgres")
+	secretsManagerClient := secretsmanager.NewFromConfig(cfg)
+	dbCreds, err := getSecretValue(secretsManagerClient, "postgres", ctx)
 	if err != nil {
 		log.Fatal("Can't get credentials:", err)
 	}
 
-	rdsEndpoint := getParameter(ssmClient, "rds_endpoint")
-	dbName := getParameter(ssmClient, "db_name")
+	rdsEndpoint := getParameter(ssmClient, "rds_endpoint", ctx)
+	dbName := getParameter(ssmClient, "db_name", ctx)
 
 	InitDB(rdsEndpoint, dbCreds.Username, dbCreds.Password, dbName)
 

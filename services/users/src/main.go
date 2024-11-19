@@ -5,17 +5,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"context"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/jinzhu/gorm"
 )
 
 var (
-	cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
+	cognitoClient *cognitoidentityprovider.Client
 	clientID      string
 	cognitoDomain string
 	frontendURL   string
@@ -32,30 +34,32 @@ func getEnv(key, defaultValue string) string {
 }
 
 func main() {
-	awsSession, err := session.NewSession(&aws.Config{
-		Region: aws.String(getEnv("AWS_REGION", "us-east-1")),
-	})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(getEnv("AWS_REGION", "us-east-1")),
+	)
 	if err != nil {
-		log.Fatalf("Failed to create AWS session: %v", err)
+		log.Fatalf("Failed to create AWS config: %v", err)
 	}
 
-	ssmClient := ssm.New(awsSession)
-	clientID = getParameter(ssmClient, "cognito_client_id")
-	cognitoDomain = getParameter(ssmClient, "cognito_domain")
-	frontendURL = getParameter(ssmClient, "frontend_url")
-	redirectURL = getParameter(ssmClient, "redirect_uri")
-	userPoolID = getParameter(ssmClient, "userpool_id")
+	ssmClient := ssm.NewFromConfig(cfg)
+	clientID = getParameter(ssmClient, "cognito_client_id", ctx)
+	cognitoDomain = getParameter(ssmClient, "cognito_domain", ctx)
+	frontendURL = getParameter(ssmClient, "frontend_url", ctx)
+	redirectURL = getParameter(ssmClient, "redirect_uri", ctx)
+	userPoolID = getParameter(ssmClient, "userpool_id", ctx)
 
-	cognitoClient = cognitoidentityprovider.New(awsSession)
+	cognitoClient = cognitoidentityprovider.NewFromConfig(cfg)
 
-	secretsManagerClient := secretsmanager.New(awsSession)
-	dbCreds, err := getSecretValue(secretsManagerClient, "postgres")
+	secretsManagerClient := secretsmanager.NewFromConfig(cfg)
+	dbCreds, err := getSecretValue(secretsManagerClient, "postgres", ctx)
 	if err != nil {
 		log.Fatal("Can't get credentials:", err)
 	}
 
-	rdsEndpoint := getParameter(ssmClient, "rds_endpoint")
-	dbName := getParameter(ssmClient, "db_name")
+	rdsEndpoint := getParameter(ssmClient, "rds_endpoint", ctx)
+	dbName := getParameter(ssmClient, "db_name", ctx)
 
 	InitDB(rdsEndpoint, dbCreds.Username, dbCreds.Password, dbName)
 

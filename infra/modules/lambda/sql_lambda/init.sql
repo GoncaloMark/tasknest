@@ -7,7 +7,6 @@ CREATE TYPE task_priority AS ENUM ('LOW', 'MEDIUM', 'HIGH');
 -- Create the Users table
 CREATE TABLE Users (
     user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username VARCHAR(50) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE
 );
 

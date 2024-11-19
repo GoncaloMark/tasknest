@@ -15,12 +15,12 @@ resource "aws_apigatewayv2_authorizer" "lambda_authorizer" {
     authorizer_type = "REQUEST"
     authorizer_uri = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions:${var.api_authorizer}/invocations"
 
-    identity_sources = ["$request.header.cookie.id_token"]
+    identity_sources = ["$request.header.Cookie.id_token"]
     authorizer_payload_format_version = "2.0"
 }
 resource "aws_apigatewayv2_route" "health_check" {
     api_id    = aws_apigatewayv2_api.main.id
-    route_key = "ANY /api/tasks/"
+    route_key = "GET /api/tasks"
     target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
 }
 
@@ -63,7 +63,8 @@ resource "aws_apigatewayv2_integration" "private_elb" {
     connection_id      = aws_apigatewayv2_vpc_link.private_integrations.id
 
     request_parameters = {
-        "overwrite:path" = "$request.path"
+        "overwrite:path"               = "$request.path"
+        "overwrite:header.Cookie"      = "$request.header.Cookie"
     }
 }
 

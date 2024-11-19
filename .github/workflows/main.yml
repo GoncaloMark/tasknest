@@ -37,15 +37,7 @@ jobs:
           COGNITO_LOGOUT_LINK=$(aws ssm get-parameter --name "/cognito_logout" --query "Parameter.Value" --output text)
           echo "COGNITO_LOGOUT_LINK=$COGNITO_LOGOUT_LINK" >> $GITHUB_ENV  # Save it as an environment variable
 
-      # - name: Check changes in tasks folder
-      #   id: tasks
-      #   run: |
-      #     echo "Checking for changes in the tasks folder"
-      #     git diff --exit-code --quiet ./services/tasks || echo "Changes detected in tasks folder"
-      #   continue-on-error: true
-
       - name: Build and Tag Image for Tasks Service
-        # if: steps.tasks.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: tasks-repo
@@ -53,7 +45,6 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/tasks --push
 
       - name: Build and Tag Image for Users Service
-        # if: steps.users.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: users-repo
@@ -61,7 +52,6 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/users --push
 
       - name: Build and Tag Image for Frontend Service
-        # if: steps.frontend.outputs.changed == 'true' || github.event_name == 'pull_request'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: frontend-repo
@@ -69,8 +59,7 @@ jobs:
           COGNITO_LOGOUT_LINK: ${{ env.COGNITO_LOGOUT_LINK }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./fe --push
-          
-        
+
       - name: Get AWS Account ID
         id: get-aws-account
         run: |
@@ -79,15 +68,34 @@ jobs:
 
       - name: Update ECS service with new task definition
         run: |
-          # Register new task definition
+          # Register new task definition for frontend service
           TASK_DEFINITION=$(aws ecs register-task-definition \
-          --family tasknest-frontend-task \
-          --network-mode awsvpc \
-          --requires-compatibilities "FARGATE" \
-          --cpu "256" \
-          --memory "512" \
-          --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
-          --container-definitions "[{\"name\":\"frontend\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend-repo:${{ github.sha }}\",\"memory\": 512,\"cpu\": 256,\"essential\":true,\"portMappings\":[{\"containerPort\":80,\"hostPort\":80}],\"environment\":[{\"name\":\"REACT_APP_COGNITO_UI\",\"value\":\"${{ env.COGNITO_UI_LINK }}\"},{\"name\":\"REACT_APP_COGNITO_LOGOUT\",\"value\":\"${{ env.COGNITO_LOGOUT_LINK }}\"}]}]"
+            --family tasknest-frontend-task \
+            --network-mode awsvpc \
+            --requires-compatibilities "FARGATE" \
+            --cpu "256" \
+            --memory "512" \
+            --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --container-definitions "[{
+                \"name\": \"frontend\",
+                \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend-repo:${{ github.sha }}\",
+                \"memory\": 512,
+                \"cpu\": 256,
+                \"essential\": true,
+                \"portMappings\": [{\"containerPort\": 80, \"hostPort\": 80}],
+                \"environment\": [
+                  {\"name\": \"REACT_APP_COGNITO_UI\", \"value\": \"${{ env.COGNITO_UI_LINK }}\"},
+                  {\"name\": \"REACT_APP_COGNITO_LOGOUT\", \"value\": \"${{ env.COGNITO_LOGOUT_LINK }}\"}
+                ],
+                \"logConfiguration\": {
+                  \"logDriver\": \"awslogs\",
+                  \"options\": {
+                    \"awslogs-group\": \"/ecs/frontend\",
+                    \"awslogs-region\": \"${{ secrets.AWS_REGION }}\",
+                    \"awslogs-stream-prefix\": \"frontend\"
+                  }
+                }
+            }]"
           )
           TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
           
@@ -97,7 +105,7 @@ jobs:
             --task-definition $TASK_REVISION \
             --force-new-deployment
 
-          # Register new task definition
+          # Register new task definition for users service
           TASK_DEFINITION=$(aws ecs register-task-definition \
             --family tasknest-users-task \
             --network-mode awsvpc \
@@ -105,7 +113,23 @@ jobs:
             --cpu "256" \
             --memory "512" \
             --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
-            --container-definitions "[{\"name\":\"users\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/users-repo:${{ github.sha }}\",\"memory\": 512,\"cpu\": 256,\"essential\":true,\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}],\"environment\":[{\"name\":\"AWS_REGION\",\"value\":\"${{ secrets.AWS_REGION }}\"}]}]"
+            --container-definitions "[{
+                \"name\": \"users\",
+                \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/users-repo:${{ github.sha }}\",
+                \"memory\": 512,
+                \"cpu\": 256,
+                \"essential\": true,
+                \"portMappings\": [{\"containerPort\": 8080, \"hostPort\": 8080}],
+                \"environment\": [{\"name\": \"AWS_REGION\", \"value\": \"${{ secrets.AWS_REGION }}\"}],
+                \"logConfiguration\": {
+                  \"logDriver\": \"awslogs\",
+                  \"options\": {
+                    \"awslogs-group\": \"/ecs/users\",
+                    \"awslogs-region\": \"${{ secrets.AWS_REGION }}\",
+                    \"awslogs-stream-prefix\": \"users\"
+                  }
+                }
+            }]"
           )
           TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
           
@@ -115,14 +139,31 @@ jobs:
             --task-definition $TASK_REVISION \
             --force-new-deployment
 
+          # Register new task definition for tasks service
           TASK_DEFINITION=$(aws ecs register-task-definition \
-          --family tasknest-tasks-task \
-          --network-mode awsvpc \
-          --requires-compatibilities "FARGATE" \
-          --cpu "256" \
-          --memory "512" \
-          --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
-          --container-definitions "[{\"name\":\"tasks\",\"image\":\"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tasks-repo:${{ github.sha }}\",\"memory\":512,\"cpu\":256,\"essential\":true,\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}],\"environment\":[{\"name\":\"AWS_REGION\",\"value\":\"${{ secrets.AWS_REGION }}\"}]}]"
+            --family tasknest-tasks-task \
+            --network-mode awsvpc \
+            --requires-compatibilities "FARGATE" \
+            --cpu "256" \
+            --memory "512" \
+            --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
+            --container-definitions "[{
+                \"name\": \"tasks\",
+                \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tasks-repo:${{ github.sha }}\",
+                \"memory\": 512,
+                \"cpu\": 256,
+                \"essential\": true,
+                \"portMappings\": [{\"containerPort\": 8080, \"hostPort\": 8080}],
+                \"environment\": [{\"name\": \"AWS_REGION\", \"value\": \"${{ secrets.AWS_REGION }}\"}],
+                \"logConfiguration\": {
+                  \"logDriver\": \"awslogs\",
+                  \"options\": {
+                    \"awslogs-group\": \"/ecs/tasks\",
+                    \"awslogs-region\": \"${{ secrets.AWS_REGION }}\",
+                    \"awslogs-stream-prefix\": \"tasks\"
+                  }
+                }
+            }]"
           )
           
           TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')

@@ -1,8 +1,21 @@
 # /infra/main.tf
-
 provider "aws" {
     region = var.aws_region
     profile = "default"
+}
+module "ssm" {
+    source = "./modules/ssm"
+    db_name = var.db_name
+    rds_endpoint = module.rds.db_endpoint
+    vpc_id = module.vpc.vpc_id
+    aws_region = var.aws_region
+    private_subnet_ids = module.vpc.private_subnet_ids 
+    cognito_ui = module.cognito.cognito_ui
+    redirect_uri = "https://${module.cloudfront.domain_name}/api/users/callback"
+    cognito_domain = module.cognito.user_pool_domain
+    frontend_url = "https://${module.cloudfront.domain_name}/"
+    userpool_id = module.cognito.user_pool_id
+    cognito_logout = module.cognito.cognito_logout
 }
 
 module "vpc" {
@@ -52,7 +65,7 @@ data "aws_iam_policy_document" "ecs_assume_role_policy" {
         actions = ["sts:AssumeRole"]
         principals {
             type        = "Service"
-            identifiers = ["ecs-tasks.amazonaws.com"]
+            identifiers = ["ecs-tasks.amazonaws.com", "ec2.amazonaws.com"]
         }
         effect = "Allow"
     }
@@ -85,23 +98,64 @@ resource "aws_iam_policy" "ecs_task_policy" {
                 Resource = "*"
             },
             {
-                "Effect": "Allow",
-                "Action": [
+                Effect = "Allow",
+                Action = [
                     "secretsmanager:GetSecretValue"
                 ],
-                "Resource": "arn:aws:secretsmanager:*:*:secret:*"
-                },
-                {
-                "Effect": "Allow",
-                "Action": [
+                Resource = data.aws_secretsmanager_secret.db_secret.arn
+            },
+            {
+                Effect = "Allow",
+                Action = [
                     "ssm:GetParameter",
                     "ssm:GetParameters",
                     "ssm:GetParametersByPath"
                 ],
-                "Resource": "arn:aws:ssm:*:*:parameter/*"
+                Resource = [
+                    data.aws_ssm_parameter.db_name.arn,
+                    data.aws_ssm_parameter.rds_endpoint.arn,
+                    data.aws_ssm_parameter.cognito_domain.arn,
+                    data.aws_ssm_parameter.frontend_url.arn,
+                    data.aws_ssm_parameter.redirect_uri.arn,
+                    data.aws_ssm_parameter.userpool_id.arn,
+                ]
             }
         ]
     })
+}
+
+data "aws_secretsmanager_secret" "db_secret" {
+    name = "postgres"  
+}
+
+data "aws_ssm_parameter" "db_name" {
+    name = "/db_name"
+    depends_on = [module.ssm]
+}
+
+data "aws_ssm_parameter" "rds_endpoint" {
+    name = "/rds_endpoint"
+    depends_on = [module.ssm]
+}
+
+data "aws_ssm_parameter" "cognito_domain" {
+    name = "/cognito_domain"
+    depends_on = [module.ssm]
+}
+
+data "aws_ssm_parameter" "frontend_url" {
+    name = "/frontend_url"
+    depends_on = [module.ssm]
+}
+
+data "aws_ssm_parameter" "redirect_uri" {
+    name = "/redirect_uri"
+    depends_on = [module.ssm]
+}
+
+data "aws_ssm_parameter" "userpool_id" {
+    name = "/userpool_id"
+    depends_on = [module.ssm]
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_role_policy_attachment" {
@@ -126,9 +180,25 @@ resource "aws_iam_policy" "ecs_execution_policy" {
                     "logs:PutLogEvents",
                     "logs:CreateLogGroup",
                     "s3:GetObject",
-                    "s3:ListBucket"
+                    "s3:ListBucket",
                 ]
                 Resource = "*"
+            },
+            {
+                Effect = "Allow",
+                Action = [
+                    "secretsmanager:GetSecretValue"
+                ],
+                Resource = "arn:aws:secretsmanager:*:*:secret:*"
+                },
+                {
+                Effect = "Allow",
+                Action = [
+                    "ssm:GetParameter",
+                    "ssm:GetParameters",
+                    "ssm:GetParametersByPath"
+                ],
+                Resource = "arn:aws:ssm:*:*:parameter/*"
             }
         ]
     })
@@ -149,7 +219,7 @@ data "aws_iam_policy_document" "ecs_task_assume_role_policy" {
         actions = ["sts:AssumeRole"]
         principals {
         type        = "Service"
-        identifiers = ["ecs-tasks.amazonaws.com"]
+        identifiers = ["ecs-tasks.amazonaws.com", "ec2.amazonaws.com"]
         }
         effect = "Allow"
     }
@@ -167,8 +237,8 @@ resource "aws_security_group" "ecs_service_sg" {
     }
 
     ingress {
-        from_port   = 3000
-        to_port     = 3000
+        from_port   = 8080
+        to_port     = 8080
         protocol    = "tcp"
         cidr_blocks = ["0.0.0.0/0"]  # Change this to restrict access as needed
     }
@@ -207,6 +277,7 @@ module "ecs" {
     users_target_group_arn = module.elb.users_target_group_arn
     frontend_target_group_arn =  module.elb.frontend_target_group_arn
     security_group_id = aws_security_group.ecs_service_sg.id
+    tasks_target_group_arn = module.elb.tasks_target_group_arn
 }
 
 resource "aws_security_group" "internal_sg" {
@@ -224,14 +295,14 @@ resource "aws_security_group" "internal_sg" {
 
     ingress {
         from_port   = 80
-        to_port     = 3000
+        to_port     = 8080
         protocol    = "tcp"
         cidr_blocks = ["0.0.0.0/0"]
     }
 
     ingress {
-        from_port   = 3000
-        to_port     = 3000
+        from_port   = 8080
+        to_port     = 8080
         protocol    = "tcp"
         cidr_blocks = ["0.0.0.0/0"]
     }
@@ -266,6 +337,7 @@ module "api_gateway" {
     internal_security_group_id = aws_security_group.internal_sg.id
     api_authorizer = module.lambda.authorizer_function_arn
     aws_region = var.aws_region
+    frontend_url = "https://${module.cloudfront.domain_name}/"
 }
 
 module "rds" {
@@ -282,6 +354,8 @@ module "cognito" {
     aws_region  = var.aws_region
     project_name  = var.project_name
     client_secret = var.client_secret
+    callback_url = "https://${module.cloudfront.domain_name}/api/users/callback"
+    logout_url = "https://${module.cloudfront.domain_name}/api/users/logout"
 }
 
 module "lambda" {
@@ -326,12 +400,17 @@ resource "aws_security_group" "secrets_manager_endpoint_sg" {
     }
 }
 
-module "ssm" {
-    source = "./modules/ssm"
-    db_name = var.db_name
-    rds_endpoint = module.rds.db_endpoint
-    vpc_id = module.vpc.vpc_id
-    aws_region = var.aws_region
-    private_subnet_ids = module.vpc.private_subnet_ids 
-    cognito_ui = module.cognito.cognito_ui
+resource "aws_cloudwatch_log_group" "ecs_frontend" {
+    name              = "/ecs/frontend"
+    retention_in_days = 30 
+}
+
+resource "aws_cloudwatch_log_group" "ecs_tasks" {
+    name              = "/ecs/tasks"
+    retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "ecs_users" {
+    name              = "/ecs/users"
+    retention_in_days = 30
 }

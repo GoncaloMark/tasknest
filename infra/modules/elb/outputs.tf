@@ -27,6 +27,10 @@ output "users_target_group_arn" {
     value = aws_lb_target_group.users.arn
 }
 
+output "tasks_target_group_arn" {
+    value = aws_lb_target_group.tasks.arn
+}
+
 output "frontend_target_group_arn" {
     value = aws_lb_target_group.frontend.arn
 }

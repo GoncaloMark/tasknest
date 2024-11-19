@@ -56,6 +56,13 @@ resource "aws_ssm_parameter" "cognito_ui" {
     description = "The endpoint of the cognito UI"
 }
 
+resource "aws_ssm_parameter" "cognito_logout" {
+    name        = "cognito_logout"
+    type        = "String"
+    value       = var.cognito_logout
+    description = "The endpoint of the cognito logout"
+}
+
 resource "aws_vpc_endpoint" "ec2_messages" {
     service_name = "com.amazonaws.us-east-1.ec2messages"
     vpc_id       = var.vpc_id
@@ -66,4 +73,32 @@ resource "aws_vpc_endpoint" "ec2_messages" {
     tags = {
         Name = "EC2 Messages VPC Endpoint"
     }
+}
+
+resource "aws_ssm_parameter" "cognito_domain" {
+    name        = "cognito_domain"
+    type        = "String"
+    value       = var.cognito_domain
+    description = "Domain for Cognito"
+}
+
+resource "aws_ssm_parameter" "frontend_url" {
+    name        = "frontend_url"
+    type        = "String"
+    value       = var.frontend_url
+    description = "URL for Frontend on CF"
+}
+
+resource "aws_ssm_parameter" "redirect_uri" {
+    name        = "redirect_uri"
+    type        = "String"
+    value       = var.redirect_uri
+    description = "URL for Redirect on CF"
+}
+
+resource "aws_ssm_parameter" "userpool_id" {
+    name        = "userpool_id"
+    type        = "String"
+    value       = var.userpool_id
+    description = "URL for Redirect on CF"
 }

@@ -62,6 +62,13 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
 
         forwarded_values {
             query_string = true
+            headers      = [
+                "Authorization",
+                "Origin",
+                "Access-Control-Request-Headers",
+                "Access-Control-Request-Method",
+                "X-User-ID"
+            ]
             cookies {
                 forward = "all"
             }
