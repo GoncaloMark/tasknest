@@ -16,16 +16,19 @@ const Navbar: React.FC<NavbarProps> = ({
     isLoggedIn,  
     email
 }) => {
+    const cognito_ui = process.env.REACT_APP_COGNITO_UI ?? 'miss';
+    const logout = process.env.REACT_APP_COGNITO_LOGOUT ?? 'miss';
+
     const handleCognitoLogin = () => {
-        window.location.href = `${process.env.REACT_APP_COGNITO_UI}`;
+        window.location.href = cognito_ui;
     };
 
     const handleCognitoSignup = () => {
-        window.location.href = `${process.env.REACT_APP_COGNITO_UI}`;
+        window.location.href = cognito_ui;
     };
 
     const handleLogout = () => {
-        window.location.href = `${process.env.REACT_APP_COGNITO_LOGOUT}`;
+        window.location.href = logout;
     }
 
     return (

@@ -46,9 +46,3 @@ variable "db_name" {
     type        = string
     default     = "tasknest"
 }
-
-variable "client_secret" {
-    description = "Client secret for Cognito user pool client"
-    type        = string
-    sensitive   = true
-}

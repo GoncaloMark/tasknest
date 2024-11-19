@@ -19,7 +19,6 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
     origin {
         domain_name = replace(var.api_gw, "/^https?://([^/]*).*/", "$1")
         origin_id   = "api_gw"
-        origin_path = "/$default"
 
         custom_origin_config {
             http_port              = 80
@@ -92,4 +91,3 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
         Name = "Web App Distribution"
     }
 }
-

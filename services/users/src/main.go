@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"context"
@@ -23,6 +25,7 @@ var (
 	frontendURL   string
 	redirectURL   string
 	userPoolID    string
+	clientSecret  string
 	db            *gorm.DB
 )
 
@@ -53,15 +56,26 @@ func main() {
 	cognitoClient = cognitoidentityprovider.NewFromConfig(cfg)
 
 	secretsManagerClient := secretsmanager.NewFromConfig(cfg)
-	dbCreds, err := getSecretValue(secretsManagerClient, "postgres", ctx)
+	val, err := getSecretValue(secretsManagerClient, "postgres", ctx)
 	if err != nil {
 		log.Fatal("Can't get credentials:", err)
+	}
+
+	var creds DBCreds
+	if err := json.Unmarshal(val, &creds); err != nil {
+		log.Fatalf("unable to parse secret: %v", err)
 	}
 
 	rdsEndpoint := getParameter(ssmClient, "rds_endpoint", ctx)
 	dbName := getParameter(ssmClient, "db_name", ctx)
 
-	InitDB(rdsEndpoint, dbCreds.Username, dbCreds.Password, dbName)
+	InitDB(rdsEndpoint, creds.Username, creds.Password, dbName)
+
+	val, err = getSecretValue(secretsManagerClient, "cognitoSecret", ctx)
+	if err != nil {
+		log.Fatal("Can't get CognitoSecret:", err)
+	}
+	clientSecret = strings.TrimSpace(string(val))
 
 	http.HandleFunc("GET /api/users/{$}", handleHealthCheck)
 	http.HandleFunc("/api/users/callback", handleCognitoCallback)

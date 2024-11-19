@@ -10,12 +10,6 @@ variable "project_name" {
   type        = string
 }
 
-variable "client_secret" {
-  description = "Client secret for Cognito user pool client"
-  type        = string
-  sensitive   = true
-}
-
 variable "cognito_user_pool_name" {
   description = "The name of the Cognito User Pool"
   type        = string

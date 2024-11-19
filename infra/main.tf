@@ -389,7 +389,6 @@ module "cognito" {
     source        = "./modules/cognito"
     aws_region  = var.aws_region
     project_name  = var.project_name
-    client_secret = var.client_secret
     callback_url = "https://${module.cloudfront.domain_name}/api/users/callback"
     logout_url = "https://${module.cloudfront.domain_name}/api/users/logout"
 }
@@ -451,4 +450,13 @@ resource "aws_cloudwatch_log_group" "ecs_tasks" {
 resource "aws_cloudwatch_log_group" "ecs_users" {
     name              = "/ecs/users"
     retention_in_days = 30
+}
+
+resource "aws_secretsmanager_secret" "cognito_client_secret" {
+    name = "cognitoSecret"
+}
+
+resource "aws_secretsmanager_secret_version" "cognito_client_secret" {
+    secret_id     = aws_secretsmanager_secret.cognito_client_secret.id
+    secret_string = module.cognito.user_pool_client_secret
 }

@@ -65,6 +65,7 @@ func handleCognitoCallback(w http.ResponseWriter, r *http.Request) {
 	reqBody := url.Values{}
 	reqBody.Set("grant_type", "authorization_code")
 	reqBody.Set("client_id", clientID)
+	reqBody.Set("client_secret", clientSecret)
 	reqBody.Set("redirect_uri", redirectURL)
 	reqBody.Set("code", code)
 
