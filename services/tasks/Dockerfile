@@ -10,7 +10,7 @@ COPY . .
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 RUN go build -o app ./src
 
-FROM scratch
+FROM alpine:latest
 
 WORKDIR /
 
