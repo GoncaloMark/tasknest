@@ -20,6 +20,39 @@ function App() {
   const [editing, setEditing] = useState<ToDo | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState('');
+  const [totalTasks, setTotalTasks] = useState(0); 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit] = useState(10);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (isLoading) return;
+
+      setIsLoading(true);
+
+      try {
+        const response = await fetch(`/api/tasks/read?limit=${limit}&page=${currentPage}`, {
+          method: 'GET',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setTodos((prevTodos) => [...prevTodos, ...data.tasks]);
+          setTotalTasks(data.total);
+        } else {
+          console.error('Failed to fetch tasks');
+        }
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      } finally {
+        setIsLoading(false); 
+      }
+    };
+
+    fetchTasks();
+  }, [currentPage, limit, isLoading]);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -83,6 +116,15 @@ function App() {
     setFilter(e.target.value);
   };
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+  
+    const bottom = target.scrollHeight === target.scrollTop + target.clientHeight;
+    if (bottom && !isLoading && todos.length < totalTasks) {
+      setCurrentPage((prevPage) => prevPage + 1); // Load the next page of tasks
+    }
+  };
+
   const sortedTodos = todos.sort((a, b) => {
     if (filter === 'creationDate') {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -104,7 +146,10 @@ function App() {
         isLoggedIn={isLoggedIn}
       />
 
-      <div className="flex-grow p-4 overflow-auto">
+      <div
+        className="flex-grow p-4 overflow-auto"
+        onScroll={handleScroll} // Listen for scroll events
+      >
         {showForm && (
           <TodoForm
             todo={newTodo}
@@ -125,6 +170,8 @@ function App() {
             />
           ))}
         </div>
+
+        {isLoading && <div className="text-center">Loading...</div>}
       </div>
     </div>
   );
