@@ -12,7 +12,7 @@ module "ssm" {
     private_subnet_ids = module.vpc.private_subnet_ids 
     cognito_ui = module.cognito.cognito_ui
     redirect_uri = "https://${module.cloudfront.domain_name}/api/users/callback"
-    cognito_domain = module.cognito.user_pool_domain
+    cognito_domain = module.cognito.cognito_domain
     frontend_url = "https://${module.cloudfront.domain_name}/"
     userpool_id = module.cognito.user_pool_id
     cognito_logout = module.cognito.cognito_logout
@@ -103,7 +103,10 @@ resource "aws_iam_policy" "ecs_task_policy" {
                 Action = [
                     "secretsmanager:GetSecretValue"
                 ],
-                Resource = data.aws_secretsmanager_secret.db_secret.arn
+                Resource = [
+                    data.aws_secretsmanager_secret.db_secret.arn,
+                    data.aws_secretsmanager_secret.cognito_secret.arn
+                ]
             },
             {
                 Effect = "Allow",
@@ -128,6 +131,10 @@ resource "aws_iam_policy" "ecs_task_policy" {
 
 data "aws_secretsmanager_secret" "db_secret" {
     name = "postgres"  
+}
+
+data "aws_secretsmanager_secret" "cognito_secret" {
+    name = "cognitoSecret"  
 }
 
 data "aws_ssm_parameter" "db_name" {
@@ -196,7 +203,10 @@ resource "aws_iam_policy" "ecs_execution_policy" {
                 Action = [
                     "secretsmanager:GetSecretValue"
                 ],
-                Resource = data.aws_secretsmanager_secret.db_secret.arn
+                Resource = [
+                    data.aws_secretsmanager_secret.db_secret.arn,
+                    data.aws_secretsmanager_secret.cognito_secret.arn
+                ]
                 },
                 {
                 Effect = "Allow",

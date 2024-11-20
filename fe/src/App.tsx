@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
 import TodoForm from './components/TodoForm';
 import TodoCard from './components/TodoCard';
@@ -18,6 +18,36 @@ function App() {
   const [filter, setFilter] = useState('creationDate');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ToDo | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [email, setEmail] = useState('');
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/users/auth/check', {
+          method: 'GET',
+          credentials: 'include', // Ensures cookies are included if needed
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsLoggedIn(data.isAuthenticated || false);
+
+          if (data.user && data.user.email) {
+            setEmail(data.user.email);
+          }
+        } else {
+          setIsLoggedIn(false);
+          setEmail('');
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+        setIsLoggedIn(false);
+        setEmail('');
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +100,8 @@ function App() {
         onCreateTodo={() => setShowForm(true)}
         filter={filter}
         onFilterChange={handleFilterChange}
-        email='ah'
-        isLoggedIn={false}
+        email={email}
+        isLoggedIn={isLoggedIn}
       />
 
       <div className="flex-grow p-4 overflow-auto">
