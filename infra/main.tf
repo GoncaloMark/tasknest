@@ -135,6 +135,7 @@ data "aws_secretsmanager_secret" "db_secret" {
 
 data "aws_secretsmanager_secret" "cognito_secret" {
     name = "cognitoSecret"  
+    depends_on = [ aws_secretsmanager_secret_version.cognito_client_secret ]
 }
 
 data "aws_ssm_parameter" "db_name" {
@@ -469,4 +470,5 @@ resource "aws_secretsmanager_secret" "cognito_client_secret" {
 resource "aws_secretsmanager_secret_version" "cognito_client_secret" {
     secret_id     = aws_secretsmanager_secret.cognito_client_secret.id
     secret_string = module.cognito.user_pool_client_secret
+    depends_on = [ module.cognito ]
 }
