@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 )
 
 func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
@@ -112,10 +113,14 @@ func handleCognitoCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := User{
-		Email: claims["email"].(string),
+	cognitoID, err := uuid.Parse(claims["sub"].(string))
+	if err != nil {
+		http.Error(w, "Invalid user ID format: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
-	if err := db.Create(&user).Error; err != nil {
+
+	var user User
+	if err := db.FirstOrCreate(&user, User{UserID: cognitoID, Email: claims["email"].(string)}).Error; err != nil {
 		http.Error(w, "Error creating user in database: "+err.Error(), http.StatusInternalServerError)
 		return
 	}

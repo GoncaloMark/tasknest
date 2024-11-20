@@ -32,3 +32,11 @@ variable "db_name_arn" {
 variable "rds_endpoint_arn"{
     type = string
 }
+
+variable "api_gw_execution_arn" {
+    type = string
+}
+
+variable "authorizer_id" {
+    type = string
+}

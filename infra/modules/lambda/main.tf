@@ -230,3 +230,12 @@ resource "aws_lambda_function" "api_authorizer" {
     aws_iam_role_policy_attachment.authorizer_basic_policy_attachment
   ]
 }
+
+resource "aws_lambda_permission" "allow_api_gateway_invoke_authorizer" {
+  statement_id  = "AllowApiGatewayInvokeAuthorizer"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api_authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+  
+  source_arn    = "${var.api_gw_execution_arn}/*/authorizers/${var.authorizer_id}"
+}

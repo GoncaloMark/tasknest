@@ -9,9 +9,8 @@ import (
 )
 
 type User struct {
-	UserID   uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
-	Username string    `gorm:"not null"`
-	Email    string    `gorm:"not null;unique"`
+	UserID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	Email  string    `gorm:"not null;unique"`
 }
 
 type Task struct {

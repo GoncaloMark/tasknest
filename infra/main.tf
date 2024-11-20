@@ -414,6 +414,8 @@ module "lambda" {
     aws_region = var.aws_region
     rds_endpoint_arn = data.aws_ssm_parameter.rds_endpoint.arn
     db_name_arn = data.aws_ssm_parameter.db_name.arn
+    api_gw_execution_arn = module.api_gateway.api_gw_execution_arn
+    authorizer_id = module.api_gateway.authorizer_id
 
     depends_on = [
         module.vpc

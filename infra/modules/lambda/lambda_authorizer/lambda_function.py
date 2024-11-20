@@ -37,7 +37,8 @@ def lambda_handler(event, context):
             "policyDocument": policy_document,
             "context": {
                 "username": user_claims.get('username', ''),
-                "email": user_claims.get('email', '')
+                "email": user_claims.get('email', ''),
+                "userId": user_claims.get('sub', '') 
             }
         }
     except Exception as e:
