@@ -17,7 +17,7 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
 
     # Origin for the API Gateway
     origin {
-        domain_name = var.api_gw
+        domain_name = replace(var.api_gw, "/^https?://([^/]*).*/", "$1")
         origin_id   = "api_gw"
 
         custom_origin_config {
@@ -67,7 +67,6 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
                 "Origin",
                 "Access-Control-Request-Headers",
                 "Access-Control-Request-Method",
-                "Cookie"
             ]
 
             cookies {
