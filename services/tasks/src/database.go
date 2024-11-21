@@ -23,10 +23,6 @@ func InitDB(rdsEndpoint, dbUser, dbPassword, dbName string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to the database: %w", err)
 	}
 
-	if err := db.AutoMigrate(&User{}).Error; err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
-	}
-
 	if err := db.DB().Ping(); err != nil {
 		return nil, fmt.Errorf("database connection test failed: %w", err)
 	}

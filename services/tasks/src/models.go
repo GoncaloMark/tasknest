@@ -22,5 +22,4 @@ type Task struct {
 	Deadline     *time.Time `gorm:"type:date" json:"deadline"`
 	Status       string     `gorm:"type:enum('TODO', 'IN_PROGRESS', 'DONE');not null" json:"status"`
 	Priority     string     `gorm:"type:enum('LOW', 'MEDIUM', 'HIGH');not null" json:"priority"`
-	User         User       `gorm:"foreignkey:UserID;references:UserID" json:"user"`
 }

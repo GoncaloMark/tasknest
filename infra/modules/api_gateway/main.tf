@@ -29,6 +29,7 @@ resource "aws_apigatewayv2_route" "proxy_protected" {
     api_id    = aws_apigatewayv2_api.main.id
     route_key = "ANY /api/tasks/{proxy+}"
     target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
+    authorization_type = "CUSTOM"
 
     authorizer_id = aws_apigatewayv2_authorizer.lambda_authorizer.id
 }
@@ -37,6 +38,14 @@ resource "aws_apigatewayv2_route" "proxy_protected" {
 resource "aws_apigatewayv2_api" "main" {
     name          = "${var.project_name}-api-gw"
     protocol_type = "HTTP"
+
+    cors_configuration {
+        allow_headers = ["*"]
+        allow_methods = ["OPTIONS", "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"]
+        allow_origins = ["*"]
+        expose_headers = ["*"]
+        max_age = 300         
+    }
 }
 
 # Default Stage
@@ -69,4 +78,3 @@ resource "aws_apigatewayv2_integration" "private_elb" {
         "overwrite:header.X-User-ID" = "$context.authorizer.userId"
     }
 }
-

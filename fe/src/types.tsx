@@ -1,12 +1,11 @@
 export interface ToDo {
-    id: number;
+    task_id?: string;
     title: string;
     description: string;
-    status: 'ToDo' | 'in Progress' | 'Done';
-    dueDate: string;
-    priority: 'Low' | 'Medium' | 'High';
-    createdAt: string;
+    status: 'TODO' | 'IN_PROGRESS' | 'DONE';
+    deadline: string;
+    priority: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
-export const priorities = ['Low', 'Medium', 'High'] as const;
-export const statuses = ['ToDo', 'in Progress', 'Done'] as const;
+export const priorities = ['LOW', 'MEDIUM', 'HIGH'] as const;
+export const statuses = ['TODO', 'IN_PROGRESS', 'DONE'] as const;

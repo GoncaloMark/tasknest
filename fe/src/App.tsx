@@ -2,56 +2,58 @@ import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
 import TodoForm from './components/TodoForm';
 import TodoCard from './components/TodoCard';
-import { ToDo, statuses } from './types';
+import { ToDo } from './types';
 
 function App() {
   const [todos, setTodos] = useState<ToDo[]>([]);
   const [newTodo, setNewTodo] = useState<ToDo>({
-    id: todos.length + 1,
     title: '',
     description: '',
-    status: 'ToDo',
-    dueDate: '',
-    priority: 'Low',
-    createdAt: new Date().toISOString(),
+    status: 'TODO',
+    deadline: '',
+    priority: 'LOW',
   });
   const [filter, setFilter] = useState('creationDate');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ToDo | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState('');
-  const [totalTasks, setTotalTasks] = useState(0); 
+  const [totalTasks, setTotalTasks] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
+      // Prevent unnecessary loading state if already fetching
       if (isLoading) return;
-
-      setIsLoading(true);
-
-      try {
-        const response = await fetch(`/api/tasks/read?limit=${limit}&page=${currentPage}`, {
-          method: 'GET',
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setTodos((prevTodos) => [...prevTodos, ...data.tasks]);
-          setTotalTasks(data.total);
-        } else {
-          console.error('Failed to fetch tasks');
+  
+      if (isLoggedIn) {
+        setIsLoading(true);
+        try {
+          const response = await fetch(`/api/tasks/read?limit=${limit}&page=${currentPage}`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+  
+          if (response.ok) {
+            const data = await response.json();
+            setTodos((prevTodos) => [...prevTodos, ...data.tasks]); 
+            setTotalTasks(data.total);
+          } else {
+            console.error('Failed to fetch tasks');
+          }
+        } catch (error) {
+          console.error('Error fetching tasks:', error);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      } finally {
-        setIsLoading(false); 
       }
     };
-
+  
     fetchTasks();
-  }, [currentPage, limit, isLoading]);
+  }, [currentPage, limit, isLoggedIn]); 
+  
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -82,28 +84,84 @@ function App() {
     checkAuth();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const taskData = {
+      ...newTodo,
+    };
+
     if (editing) {
-      setTodos(todos.map((todo) => (todo.id === editing.id ? newTodo : todo)));
-      setEditing(null);
+      try {
+        const response = await fetch(`/api/tasks/update/${editing.task_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(taskData),
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const updatedTask = await response.json(); // Ensure the updated task has the ID
+          setTodos(todos.map((todo) => (todo.task_id === editing.task_id ? updatedTask : todo)));
+          setEditing(null);
+        } else {
+          console.error('Failed to update task');
+        }
+      } catch (error) {
+        console.error('Error updating task:', error);
+      }
     } else {
-      setTodos([...todos, newTodo]);
+      try {
+        const response = await fetch('/api/tasks/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(taskData),
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const createdTask = await response.json(); // Expecting the task with the ID
+          setTodos([...todos, createdTask]);
+        } else {
+          console.error('Failed to create task');
+        }
+      } catch (error) {
+        console.error('Error creating task:', error);
+      }
     }
+
     setNewTodo({
-      id: todos.length + 1,
       title: '',
       description: '',
-      status: 'ToDo',
-      dueDate: '',
-      priority: 'Low',
-      createdAt: new Date().toISOString(),
+      status: 'TODO',
+      deadline: '',
+      priority: 'LOW',
     });
     setShowForm(false);
   };
 
-  const handleDelete = (id: number) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+  const handleDelete = async (id?: string) => {
+    if (!id) {
+      console.error('No ID!');
+      return;
+    }
+    try {
+      const response = await fetch(`/api/tasks/delete/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        setTodos(todos.filter((todo) => todo.task_id !== id));  // Filter out the deleted task
+      } else {
+        console.error('Failed to delete task');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   const handleEdit = (todo: ToDo) => {
@@ -118,23 +176,12 @@ function App() {
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-  
+
     const bottom = target.scrollHeight === target.scrollTop + target.clientHeight;
     if (bottom && !isLoading && todos.length < totalTasks) {
       setCurrentPage((prevPage) => prevPage + 1); // Load the next page of tasks
     }
   };
-
-  const sortedTodos = todos.sort((a, b) => {
-    if (filter === 'creationDate') {
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    } else if (filter === 'deadline') {
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    } else if (filter === 'completionStatus') {
-      return statuses.indexOf(a.status) - statuses.indexOf(b.status);
-    }
-    return 0;
-  });
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
@@ -161,9 +208,9 @@ function App() {
         )}
 
         <div className="flex flex-wrap gap-4">
-          {sortedTodos.map((todo) => (
+          {todos.map((todo) => (
             <TodoCard
-              key={todo.id}
+              key={todo.task_id} 
               todo={todo}
               onEdit={handleEdit}
               onDelete={handleDelete}

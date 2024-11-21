@@ -55,8 +55,8 @@ const TodoForm: React.FC<TodoFormProps> = ({
                 <input
                 className="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-gray-100 focus:outline-none focus:shadow-outline"
                 type="date"
-                value={todo.dueDate}
-                onChange={(e) => setTodo({ ...todo, dueDate: e.target.value })}
+                value={todo.deadline}
+                onChange={(e) => setTodo({ ...todo, deadline: e.target.value })}
                 />
             </div>
             <div className="mb-4">

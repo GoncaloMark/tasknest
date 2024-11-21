@@ -1,30 +1,30 @@
 resource "aws_cloudfront_distribution" "tasknest_distribution" {
     enabled             = true
     default_root_object = "index.html"
-    
+
     # Origin for the web app frontend (ALB)
     origin {
         domain_name = var.alb_dns
         origin_id   = "ALBOrigin"
 
         custom_origin_config {
-            http_port              = 80
-            https_port             = 443
-            origin_protocol_policy = "http-only"
-            origin_ssl_protocols   = ["TLSv1.2"]
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "http-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
         }
     }
 
     # Origin for the API Gateway
     origin {
-        domain_name = replace(var.api_gw, "/^https?://([^/]*).*/", "$1")
+        domain_name = var.api_gw
         origin_id   = "api_gw"
 
         custom_origin_config {
-            http_port              = 80
-            https_port             = 443
-            origin_protocol_policy = "https-only"
-            origin_ssl_protocols   = ["TLSv1.2"]
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
         }
     }
 
@@ -32,16 +32,16 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
     default_cache_behavior {
         target_origin_id       = "ALBOrigin"
         viewer_protocol_policy = "redirect-to-https"
-        
+
         allowed_methods = ["GET", "HEAD", "OPTIONS"]
         cached_methods  = ["GET", "HEAD"]
-        
+
         forwarded_values {
-            query_string = true
-            
-            cookies {
-                forward = "all"
-            }
+        query_string = true
+
+        cookies {
+            forward = "all"
+        }
         }
 
         min_ttl     = 0
@@ -49,6 +49,7 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
         max_ttl     = 86400
     }
 
+    # Ordered cache behavior for API Gateway
     ordered_cache_behavior {
         path_pattern     = "/api/*"
         allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -66,8 +67,9 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
                 "Origin",
                 "Access-Control-Request-Headers",
                 "Access-Control-Request-Method",
-                "X-User-ID"
+                "Cookie"
             ]
+
             cookies {
                 forward = "all"
             }
@@ -83,7 +85,7 @@ resource "aws_cloudfront_distribution" "tasknest_distribution" {
 
     restrictions {
         geo_restriction {
-            restriction_type = "none"
+        restriction_type = "none"
         }
     }
 

@@ -120,10 +120,12 @@ func handleCognitoCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
+	log.Printf("ID: %s :: EMAIL: %s\n", cognitoID, claims["email"].(string))
 	if err := db.FirstOrCreate(&user, User{UserID: cognitoID, Email: claims["email"].(string)}).Error; err != nil {
 		http.Error(w, "Error creating user in database: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Printf("USER::ID {%s} | USER::EMAIL {%s}\n", user.UserID, user.Email)
 
 	// Set tokens as cookies
 	http.SetCookie(w, &http.Cookie{
