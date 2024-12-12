@@ -165,12 +165,16 @@ resource "aws_lambda_function" "db_migrate" {
 
   depends_on = [
     aws_security_group.lambda_sg,
-    null_resource.docker_push_mig
+    null_resource.docker_push_mig,
+    aws_iam_role_policy_attachment.lambda_policy_attachment,
+    aws_iam_role_policy_attachment.basic_execution_policy_attachment,
   ]
 }
 
 resource "null_resource" "execute_migrations" {
-  depends_on = [aws_lambda_function.db_migrate]
+  depends_on = [
+    aws_lambda_function.db_migrate
+  ]
 
   provisioner "local-exec" {
     command = <<EOT

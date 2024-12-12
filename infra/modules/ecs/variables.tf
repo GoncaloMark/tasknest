@@ -82,7 +82,7 @@ variable "container_definitions" {
 variable "desired_count" {
     description = "Desired count of running tasks"
     type        = number
-    default = 1
+    default = 2
 }
 
 variable "private_subnet_ids" {

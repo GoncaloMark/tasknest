@@ -8,142 +8,113 @@ on:
       - master
       - main
 
-name: Build and Push
+name: Build and Deploy Affected Services
 jobs:
   build:
-    name: Build and Push Images
+    name: Determine, Build, and Deploy Affected Services
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Identify Affected Services
+        id: affected-services
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "Changed files: $CHANGED_FILES"
+
+          # Determine affected services
+          AFFECTED_SERVICES=""
+          if echo "$CHANGED_FILES" | grep -q "^services/tasks/"; then
+            AFFECTED_SERVICES="${AFFECTED_SERVICES} tasks"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^services/users/"; then
+            AFFECTED_SERVICES="${AFFECTED_SERVICES} users"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^fe/"; then
+            AFFECTED_SERVICES="${AFFECTED_SERVICES} frontend"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^infra/"; then
+            AFFECTED_SERVICES="frontend users tasks"
+          fi
+          if echo "$CHANGED_FILES" | grep -q "^.github/workflows/"; then
+            AFFECTED_SERVICES="frontend users tasks"
+          fi
+          echo "Affected services: $AFFECTED_SERVICES"
+          echo "services=$AFFECTED_SERVICES" >> $GITHUB_ENV
 
       - name: Login to ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Get Cognito UI Link from SSM
-        id: get-ssm-parameter
+      - name: Build and Push Images
+        if: contains(env.services, 'tasks') || contains(env.services, 'users') || contains(env.services, 'frontend')
         run: |
-          COGNITO_UI_LINK=$(aws ssm get-parameter --name "/cognito_ui" --query "Parameter.Value" --output text)
-          echo "COGNITO_UI_LINK=$COGNITO_UI_LINK" >> $GITHUB_ENV  # Save it as an environment variable
-          COGNITO_LOGOUT_LINK=$(aws ssm get-parameter --name "/cognito_logout" --query "Parameter.Value" --output text)
-          echo "COGNITO_LOGOUT_LINK=$COGNITO_LOGOUT_LINK" >> $GITHUB_ENV  # Save it as an environment variable
+          for SERVICE in ${{ env.services }}; do
+            case $SERVICE in
+              "tasks")
+                docker build -t ${{ steps.login-ecr.outputs.registry }}/tasks-repo:${{ github.sha }} ./services/tasks
+                docker push ${{ steps.login-ecr.outputs.registry }}/tasks-repo:${{ github.sha }}
+                ;;
+              "users")
+                docker build -t ${{ steps.login-ecr.outputs.registry }}/users-repo:${{ github.sha }} ./services/users
+                docker push ${{ steps.login-ecr.outputs.registry }}/users-repo:${{ github.sha }}
+                ;;
+              "frontend")
+                docker build \
+                  --build-arg REACT_APP_COGNITO_UI="${{ env.COGNITO_UI_LINK }}" \
+                  --build-arg REACT_APP_COGNITO_LOGOUT="${{ env.COGNITO_LOGOUT_LINK }}" \
+                  -t ${{ steps.login-ecr.outputs.registry }}/frontend-repo:${{ github.sha }} \
+                  ./fe
+                docker push ${{ steps.login-ecr.outputs.registry }}/frontend-repo:${{ github.sha }}
+                ;;
+            esac
+          done
 
-      - name: Build and Tag Image for Tasks Service
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: tasks-repo
+      - name: Deploy to ECS
+        if: contains(env.services, 'tasks') || contains(env.services, 'users') || contains(env.services, 'frontend')
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/tasks --push
-
-      - name: Build and Tag Image for Users Service
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: users-repo
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./services/users --push
-
-      - name: Build and Tag Image for Frontend Service
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: frontend-repo
-          COGNITO_UI_LINK: ${{ env.COGNITO_UI_LINK }} 
-          COGNITO_LOGOUT_LINK: ${{ env.COGNITO_LOGOUT_LINK }}
-        run: |
-          docker build \
-              --build-arg REACT_APP_COGNITO_UI="${{ env.COGNITO_UI_LINK }}" \
-              --build-arg REACT_APP_COGNITO_LOGOUT="${{ env.COGNITO_LOGOUT_LINK }}" \
-              -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" \
-              ./fe
-
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
-
-      - name: Get AWS Account ID
-        id: get-aws-account
-        run: |
-            ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-            echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-
-      - name: Update ECS services with new task definitions
-        run: |
-          # Function to update task definition and service
           update_service() {
-            local family=$1
-            local service=$2
-            local container_name=$3
-            local container_port=$4
-            local repository=$5
-            local env_vars=$6
+            TASK_DEFINITION=$1
+            SERVICE_NAME=$2
+            CONTAINER_NAME=$3
+            PORT=$4
+            REPO_NAME=$5
 
-            # Register new task definition
-            TASK_DEFINITION=$(aws ecs register-task-definition \
-              --family $family \
-              --network-mode awsvpc \
-              --requires-compatibilities "FARGATE" \
-              --cpu "256" \
-              --memory "512" \
-              --execution-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-execution-role \
-              --task-role-arn arn:aws:iam::${{ steps.get-aws-account.outputs.account_id }}:role/tasknest-ecs-task-role \
-              --container-definitions "[{
-                  \"name\": \"$container_name\",
-                  \"image\": \"${{ steps.get-aws-account.outputs.account_id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/$repository:${{ github.sha }}\",
-                  \"memory\": 512,
-                  \"cpu\": 256,
-                  \"essential\": true,
-                  \"portMappings\": [{\"containerPort\": $container_port, \"hostPort\": $container_port}],
-                  \"environment\": $env_vars,
-                  \"logConfiguration\": {
-                    \"logDriver\": \"awslogs\",
-                    \"options\": {
-                      \"awslogs-group\": \"/ecs/$container_name\",
-                      \"awslogs-region\": \"${{ secrets.AWS_REGION }}\",
-                      \"awslogs-stream-prefix\": \"$container_name\"
-                    }
-                  }
-              }]"
-            )
-            TASK_REVISION=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
-            
-            # Stop all running tasks
-            RUNNING_TASKS=$(aws ecs list-tasks \
-              --cluster tasknest-ecs-cluster \
-              --service-name $service \
-              --desired-status RUNNING \
-              --query 'taskArns[]' \
-              --output text)
+            # Register a new task definition
+            aws ecs register-task-definition \
+              --family "$TASK_DEFINITION" \
+              --container-definitions "[
+                {
+                  \"name\": \"$CONTAINER_NAME\",
+                  \"image\": \"${{ steps.login-ecr.outputs.registry }}/$REPO_NAME:${{ github.sha }}\",
+                  \"portMappings\": [
+                    {\"containerPort\": $PORT, \"hostPort\": $PORT}
+                  ]
+                }
+              ]"
 
-            if [ ! -z "$RUNNING_TASKS" ]; then
-              echo "Stopping running tasks for $service"
-              for task in $RUNNING_TASKS; do
-                aws ecs stop-task --cluster tasknest-ecs-cluster --task $task
-              done
-            fi
-
-            # Update service with new deployment configuration
+            # Update the ECS service
             aws ecs update-service \
-              --cluster tasknest-ecs-cluster \
-              --service $service \
-              --task-definition $TASK_REVISION \
-              --force-new-deployment \
-              --deployment-configuration "maximumPercent=100,minimumHealthyPercent=0"
+              --cluster tasknest-cluster \
+              --service "$SERVICE_NAME" \
+              --force-new-deployment
+
+            # Wait for the service to stabilize
+            aws ecs wait services-stable \
+              --cluster tasknest-cluster \
+              --services "$SERVICE_NAME"
           }
 
-          # Update frontend service
-          FRONTEND_ENV="[{\"name\": \"REACT_APP_COGNITO_UI\", \"value\": \"${{ env.COGNITO_UI_LINK }}\"}, {\"name\": \"REACT_APP_COGNITO_LOGOUT\", \"value\": \"${{ env.COGNITO_LOGOUT_LINK }}\"}]"
-          update_service "tasknest-frontend-task" "tasknest-frontend-service" "frontend" 80 "frontend-repo" "$FRONTEND_ENV"
-
-          # Update users service
-          USERS_ENV="[{\"name\": \"AWS_REGION\", \"value\": \"${{ secrets.AWS_REGION }}\"}]"
-          update_service "tasknest-users-task" "tasknest-users-service" "users" 8080 "users-repo" "$USERS_ENV"
-
-          # Update tasks service
-          TASKS_ENV="[{\"name\": \"AWS_REGION\", \"value\": \"${{ secrets.AWS_REGION }}\"}]"
-          update_service "tasknest-tasks-task" "tasknest-tasks-service" "tasks" 8080 "tasks-repo" "$TASKS_ENV"
+          for SERVICE in ${{ env.services }}; do
+            case $SERVICE in
+              "tasks")
+                update_service "tasknest-tasks-task" "tasknest-tasks-service" "tasks" 8080 "tasks-repo"
+                ;;
+              "users")
+                update_service "tasknest-users-task" "tasknest-users-service" "users" 8080 "users-repo"
+                ;;
+              "frontend")
+                update_service "tasknest-frontend-task" "tasknest-frontend-service" "frontend" 80 "frontend-repo"
+                ;;
+            esac
+          done
