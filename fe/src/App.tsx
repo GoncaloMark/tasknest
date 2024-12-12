@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
 import TodoForm from './components/TodoForm';
 import TodoCard from './components/TodoCard';
-import { ToDo } from './types';
+import { PrioFilters, StatusFilters, SortFilters, OrderFilters, ToDo } from './types';
 
 function App() {
   const [todos, setTodos] = useState<ToDo[]>([]);
@@ -13,7 +13,12 @@ function App() {
     deadline: '',
     priority: 'LOW',
   });
-  const [filter, setFilter] = useState('creationDate');
+
+  const [pFilter, setPFilter] = useState<PrioFilters>({priority: ""});
+  const [sFilter, setSFilter] = useState<StatusFilters>({status: ""});
+  const [orderFilter, setOrderFilter] = useState<OrderFilters>({value: 'desc'});
+  const [sortFilter, setSortFilter] = useState<SortFilters>({value: "creation_date"})
+
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ToDo | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -31,14 +36,22 @@ function App() {
       if (isLoggedIn) {
         setIsLoading(true);
         try {
-          const response = await fetch(`/api/tasks/read?limit=${limit}&page=${currentPage}`, {
+          let query = `limit=${limit}&page=${currentPage}`;
+          if(pFilter.priority != "") query += `&priority=${pFilter.priority}`;
+          if(sortFilter.value != "") query += `&sort=${sortFilter.value}`
+          if(sFilter.status != "") query += `&status=${sFilter.status}`
+          if(orderFilter.value != "") query += `&order=${orderFilter.value}`
+
+          // console.log(query)
+
+          const response = await fetch(`/api/tasks/read?${query}`, {
             method: 'GET',
             credentials: 'include',
           });
   
           if (response.ok) {
             const data = await response.json();
-            setTodos((prevTodos) => [...prevTodos, ...data.tasks]); 
+            setTodos(data.tasks); 
             setTotalTasks(data.total);
           } else {
             console.error('Failed to fetch tasks');
@@ -52,7 +65,7 @@ function App() {
     };
   
     fetchTasks();
-  }, [currentPage, limit, isLoggedIn]); 
+  }, [currentPage, limit, isLoggedIn, pFilter, sFilter, orderFilter, sortFilter]); 
   
 
   useEffect(() => {
@@ -90,6 +103,12 @@ function App() {
       ...newTodo,
     };
 
+    let query = `limit=${limit}&page=${currentPage}`;
+    if(pFilter.priority != "") query += `&priority=${pFilter.priority}`;
+    if(sortFilter.value != "") query += `&sort=${sortFilter.value}`
+    if(sFilter.status != "") query += `&status=${sFilter.status}`
+    if(orderFilter.value != "") query += `&order=${orderFilter.value}`
+
     if (editing) {
       try {
         const response = await fetch(`/api/tasks/update/${editing.task_id}`, {
@@ -102,8 +121,19 @@ function App() {
         });
 
         if (response.ok) {
-          const updatedTask = await response.json(); // Ensure the updated task has the ID
-          setTodos(todos.map((todo) => (todo.task_id === editing.task_id ? updatedTask : todo)));
+          console.log("Getting after update")
+          const response = await fetch(`/api/tasks/read?${query}`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+  
+          if (response.ok) {
+            const data = await response.json();
+            setTodos(data.tasks); 
+            setTotalTasks(data.total);
+          } else {
+            console.error('Failed to fetch tasks');
+          }
           setEditing(null);
         } else {
           console.error('Failed to update task');
@@ -123,8 +153,19 @@ function App() {
         });
 
         if (response.ok) {
-          const createdTask = await response.json(); // Expecting the task with the ID
-          setTodos([...todos, createdTask]);
+          console.log("Getting after create")
+          const response = await fetch(`/api/tasks/read?${query}`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+  
+          if (response.ok) {
+            const data = await response.json();
+            setTodos(data.tasks); 
+            setTotalTasks(data.total);
+          } else {
+            console.error('Failed to fetch tasks');
+          }
         } else {
           console.error('Failed to create task');
         }
@@ -170,8 +211,20 @@ function App() {
     setShowForm(true);
   };
 
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilter(e.target.value);
+  const handlePrioFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPFilter({priority: e.target.value})
+  };
+
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSFilter({status: e.target.value})
+  };
+
+  const handleOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setOrderFilter({value: e.target.value});
+  };
+
+  const handleSortFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortFilter({value: e.target.value});
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -182,13 +235,20 @@ function App() {
       setCurrentPage((prevPage) => prevPage + 1); // Load the next page of tasks
     }
   };
-
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <Navbar
         onCreateTodo={() => setShowForm(true)}
-        filter={filter}
-        onFilterChange={handleFilterChange}
+        order={orderFilter.value}
+        pfilter={pFilter?.priority}
+        sfilter={sFilter?.status}
+        sort={sortFilter?.value}
+
+        onOrderChange={handleOrderChange}
+        onSortFilterChange={handleSortFilterChange}
+        onSFilterChange={handleStatusFilterChange}
+        onPFilterChange={handlePrioFilterChange}
+
         email={email}
         isLoggedIn={isLoggedIn}
       />
@@ -203,7 +263,7 @@ function App() {
             onSubmit={handleSubmit}
             onClose={() => setShowForm(false)}
             setTodo={setNewTodo}
-            isEditing={!!editing}
+            isEditing={!editing}
           />
         )}
 

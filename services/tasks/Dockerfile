@@ -1,4 +1,4 @@
-FROM golang:alpine AS builder
+FROM golang:1.23.2-alpine AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN go mod tidy
 COPY . . 
 
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-RUN go build -o app ./src
+RUN go build -o app .
 
 FROM alpine:latest 
 

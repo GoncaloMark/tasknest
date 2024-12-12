@@ -3,21 +3,33 @@ import { Plus } from 'lucide-react';
 
 interface NavbarProps {
     onCreateTodo: () => void;
-    filter: string;
-    onFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    sort?: string;
+    order?: string
+    sfilter?: string;
+    pfilter?: string;
+    onPFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onSFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onSortFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onOrderChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     isLoggedIn: boolean;
     email?: string;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
     onCreateTodo, 
-    filter, 
-    onFilterChange, 
+    sort,
+    sfilter, 
+    pfilter,
+    order,
+    onPFilterChange, 
+    onSFilterChange,
+    onSortFilterChange,
+    onOrderChange,
     isLoggedIn,  
     email
 }) => {
-    const cognito_ui = import.meta.env.VITE_APP_COGNITO_UI ?? 'miss';
-    const logout = import.meta.env.VITE_APP_COGNITO_LOGOUT ?? 'miss';
+    const cognito_ui = import.meta.env.VITE_APP_COGNITO_UI;
+    const logout = import.meta.env.VITE_APP_COGNITO_LOGOUT;
 
     const handleCognitoLogin = () => {
         window.location.href = cognito_ui;
@@ -76,12 +88,51 @@ const Navbar: React.FC<NavbarProps> = ({
                         <li className="mb-2 flex items-center justify-center">
                             <select
                                 className="bg-gray-700 hover:bg-gray-600 text-gray-100 w-48 font-bold py-2 px-4 rounded"
-                                value={filter}
-                                onChange={onFilterChange}
+                                value={sort}
+                                onChange={onSortFilterChange}
                             >
-                                <option value="creationDate">Creation Date</option>
+                                <option value="">None</option>
+                                <option value="creation_date">Creation Date</option>
                                 <option value="deadline">Deadline</option>
-                                <option value="completionStatus">Completion</option>
+                                <option value="status">Status</option>
+                                <option value="priority">Priority</option>
+                            </select>
+                        </li>
+
+                        <li className="mb-2 flex items-center justify-center">
+                            <select
+                                className="bg-gray-700 hover:bg-gray-600 text-gray-100 w-48 font-bold py-2 px-4 rounded"
+                                value={pfilter}
+                                onChange={onPFilterChange}
+                            >
+                                <option value="">None</option>
+                                <option value="HIGH">High</option>
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                            </select>
+                        </li>
+
+                        <li className="mb-2 flex items-center justify-center">
+                            <select
+                                className="bg-gray-700 hover:bg-gray-600 text-gray-100 w-48 font-bold py-2 px-4 rounded"
+                                value={sfilter}
+                                onChange={onSFilterChange}
+                            >
+                                <option value="">None</option>
+                                <option value="TODO">TODO</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="DONE">Done</option>
+                            </select>
+                        </li>
+
+                        <li className="mb-2 flex items-center justify-center">
+                            <select
+                                className="bg-gray-700 hover:bg-gray-600 text-gray-100 w-48 font-bold py-2 px-4 rounded"
+                                value={order}
+                                onChange={onOrderChange}
+                            >
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
                             </select>
                         </li>
 

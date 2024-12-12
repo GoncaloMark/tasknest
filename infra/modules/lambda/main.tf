@@ -1,3 +1,42 @@
+resource "aws_cloudwatch_log_group" "authorizer_log_group" {
+  name              = "/aws/lambda/authorizer"
+  retention_in_days = 14  
+}
+
+resource "aws_ecr_repository" "authorizer" {
+  name = "authorizer-repo"
+}
+
+resource "null_resource" "docker_push_auth" {
+  depends_on = [aws_ecr_repository.authorizer]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${aws_ecr_repository.authorizer.repository_url}
+      docker build -t authorizer-image ./modules/lambda/lambda_authorizer
+      docker tag authorizer-image:latest ${aws_ecr_repository.authorizer.repository_url}:latest
+      docker push ${aws_ecr_repository.authorizer.repository_url}:latest
+    EOT
+  }
+}
+
+resource "aws_ecr_repository" "migrations" {
+  name = "migrations-repo"
+}
+
+resource "null_resource" "docker_push_mig" {
+  depends_on = [aws_ecr_repository.migrations]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${aws_ecr_repository.migrations.repository_url}
+      docker build --platform linux/amd64 -t migrations-image ./modules/lambda/migration_lambda
+      docker tag migrations-image:latest ${aws_ecr_repository.migrations.repository_url}:latest
+      docker push ${aws_ecr_repository.migrations.repository_url}:latest
+    EOT
+  }
+}
+
 resource "aws_iam_role" "lambda_execution_role" {
   name = "lambda_rds_migration_role"
   assume_role_policy = jsonencode({
@@ -104,17 +143,18 @@ resource "aws_iam_role_policy_attachment" "sto-lambda-vpc-role-policy-attach" {
 resource "aws_lambda_function" "db_migrate" {
   function_name    = "db-migrate"
   role             = aws_iam_role.lambda_execution_role.arn
-  handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.10"
+  runtime          = "provided.al2"
   timeout          = 60
   memory_size      = 256
 
-  filename         = "${path.module}/sql_lambda.zip"
+  package_type     = "Image" 
+
+  image_uri        = "${aws_ecr_repository.migrations.repository_url}:latest"
 
   environment {
     variables = {
       DB_SECRET_NAME = "postgres"
-      REGION     = "us-east-1"
+      REGION         = "us-east-1"
     }
   }
 
@@ -124,9 +164,21 @@ resource "aws_lambda_function" "db_migrate" {
   }
 
   depends_on = [
-    aws_security_group.lambda_sg
+    aws_security_group.lambda_sg,
+    null_resource.docker_push_mig
   ]
 }
+
+resource "null_resource" "execute_migrations" {
+  depends_on = [aws_lambda_function.db_migrate]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      aws lambda invoke --function-name db-migrate --cli-binary-format raw-in-base64-out response.json
+    EOT
+  }
+}
+
 
 resource "aws_iam_role" "lambda_authorizer_role" {
   name = "lambda_authorizer_role"
@@ -149,29 +201,12 @@ resource "aws_iam_policy" "lambda_authorizer_policy" {
       {
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:CreateLogGroup"],
         Effect   = "Allow",
-        Resource = "*"
+        Resource = "${aws_cloudwatch_log_group.authorizer_log_group.arn}:*"
       },
       {
         Action   = ["ec2:CreateNetworkInterface", "ec2:DescribeNetworkInterfaces", "ec2:DeleteNetworkInterface"],
         Effect   = "Allow",
         Resource = "*"
-      },
-      {
-        Action   = ["secretsmanager:GetSecretValue"],
-        Effect   = "Allow",
-        Resource = data.aws_secretsmanager_secret.db_secret.arn
-      },
-      {
-        Action   = [
-            "ssm:GetParameters",
-            "ssm:GetParameter",
-            "ssm:GetParametersByPath"
-            ],  
-        Effect   = "Allow",
-        Resource = [
-        var.db_name_arn,
-        var.rds_endpoint_arn
-        ]
       }
     ]
   })
@@ -205,12 +240,12 @@ resource "aws_security_group" "authorizer_sg" {
 resource "aws_lambda_function" "api_authorizer" {
   function_name    = "api-authorizer"
   role             = aws_iam_role.lambda_authorizer_role.arn
-  handler          = "authorizer.lambda_handler"
   runtime          = "python3.10"
-  timeout          = 10
-  memory_size      = 128
+  timeout          = 60
+  memory_size      = 512
 
-  filename         = "${path.module}/lambda_authorizer.zip"
+  image_uri     = "${aws_ecr_repository.authorizer.repository_url}:latest"
+  package_type  = "Image"
 
   environment {
     variables = {
@@ -227,7 +262,8 @@ resource "aws_lambda_function" "api_authorizer" {
 
   depends_on = [
     aws_iam_role_policy_attachment.authorizer_policy_attachment,
-    aws_iam_role_policy_attachment.authorizer_basic_policy_attachment
+    aws_iam_role_policy_attachment.authorizer_basic_policy_attachment,
+    null_resource.docker_push_auth
   ]
 }
 

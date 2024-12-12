@@ -1,0 +1,220 @@
+basePath: /api
+definitions:
+  main.Task:
+    properties:
+      creation_date:
+        type: string
+      deadline:
+        type: string
+      description:
+        type: string
+      priority:
+        type: string
+      status:
+        type: string
+      task_id:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: string
+    type: object
+  main.TaskRequest:
+    properties:
+      deadline:
+        type: string
+      description:
+        type: string
+      priority:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API for managing tasks
+  title: Task Management API
+  version: "1.0"
+paths:
+  /api/health:
+    get:
+      description: Returns OK if the API is running
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Check API health
+      tags:
+      - Health
+  /api/tasks:
+    get:
+      description: Retrieve a paginated list of tasks
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by priority
+        in: query
+        name: priority
+        type: string
+      - description: Sort by field
+        in: query
+        name: sort
+        type: string
+      - description: Order direction (asc/desc)
+        in: query
+        name: order
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get tasks for the user
+      tags:
+      - Tasks
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Create a new task for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Task details
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/main.TaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Task created successfully
+          schema:
+            $ref: '#/definitions/main.Task'
+        "400":
+          description: Invalid input or date format
+          schema:
+            type: string
+        "401":
+          description: Unauthorized User
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a new task
+      tags:
+      - Tasks
+  /tasks/{id}:
+    delete:
+      description: Delete a specific task for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Task deleted successfully
+          schema:
+            type: string
+        "401":
+          description: Unauthorized User
+          schema:
+            type: string
+        "404":
+          description: Task not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a task
+      tags:
+      - Tasks
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing task for the authenticated user
+      parameters:
+      - description: User ID
+        in: header
+        name: X-User-ID
+        required: true
+        type: string
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated task details
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/main.Task'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task updated successfully
+          schema:
+            $ref: '#/definitions/main.Task'
+        "400":
+          description: Invalid input
+          schema:
+            type: string
+        "401":
+          description: Unauthorized User
+          schema:
+            type: string
+        "404":
+          description: Task not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update an existing task
+      tags:
+      - Tasks
+swagger: "2.0"
