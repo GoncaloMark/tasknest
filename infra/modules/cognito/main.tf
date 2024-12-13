@@ -34,28 +34,7 @@ resource "aws_cognito_user_pool" "user_pool" {
 
   schema {
     attribute_data_type = "String"
-    name                = "phone_number"
-    required            = true
-    mutable             = true
-  }
-
-  schema {
-    attribute_data_type = "String"
     name                = "given_name"
-    required            = true
-    mutable             = true
-  }
-
-  schema {
-    attribute_data_type = "String"
-    name                = "family_name"
-    required            = true
-    mutable             = true
-  }
-
-  schema {
-    attribute_data_type = "String"
-    name                = "address"
     required            = true
     mutable             = true
   }
