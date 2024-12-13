@@ -57,24 +57,26 @@ jobs:
 
       - name: Build and Push Images
         if: contains(env.services, 'tasks') || contains(env.services, 'users') || contains(env.services, 'frontend')
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           for SERVICE in ${{ env.services }}; do
             case $SERVICE in
               "tasks")
-                docker build -t ${{ steps.login-ecr.outputs.registry }}/tasks-repo:${{ github.sha }} ./services/tasks
-                docker push ${{ steps.login-ecr.outputs.registry }}/tasks-repo:${{ github.sha }}
+                docker build -t $ECR_REGISTRY/tasks-repo:${{ github.sha }} ./services/tasks
+                docker push $ECR_REGISTRY/tasks-repo:${{ github.sha }}
                 ;;
               "users")
-                docker build -t ${{ steps.login-ecr.outputs.registry }}/users-repo:${{ github.sha }} ./services/users
-                docker push ${{ steps.login-ecr.outputs.registry }}/users-repo:${{ github.sha }}
+                docker build -t $ECR_REGISTRY/users-repo:${{ github.sha }} ./services/users
+                docker push $ECR_REGISTRY/users-repo:${{ github.sha }}
                 ;;
               "frontend")
                 docker build \
                   --build-arg REACT_APP_COGNITO_UI="${{ env.COGNITO_UI_LINK }}" \
                   --build-arg REACT_APP_COGNITO_LOGOUT="${{ env.COGNITO_LOGOUT_LINK }}" \
-                  -t ${{ steps.login-ecr.outputs.registry }}/frontend-repo:${{ github.sha }} \
+                  -t $ECR_REGISTRY/frontend-repo:${{ github.sha }} \
                   ./fe
-                docker push ${{ steps.login-ecr.outputs.registry }}/frontend-repo:${{ github.sha }}
+                docker push $ECR_REGISTRY/frontend-repo:${{ github.sha }}
                 ;;
             esac
           done
