@@ -263,7 +263,7 @@ function App() {
             onSubmit={handleSubmit}
             onClose={() => setShowForm(false)}
             setTodo={setNewTodo}
-            isEditing={!editing}
+            isEditing={!!editing}
           />
         )}
 
