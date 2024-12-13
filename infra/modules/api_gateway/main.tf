@@ -25,6 +25,14 @@ resource "aws_apigatewayv2_route" "health_check" {
     api_id    = aws_apigatewayv2_api.main.id
     route_key = "GET /api/tasks"
     target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
+    authorization_type = "NONE"  # No authorization for this route
+}
+
+resource "aws_apigatewayv2_route" "swagger" {
+    api_id    = aws_apigatewayv2_api.main.id
+    route_key = "ANY /api/tasks/swagger"
+    target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
+    authorization_type = "NONE"  # No authorization for this route
 }
 
 resource "aws_apigatewayv2_route" "proxy_protected" {
@@ -34,7 +42,22 @@ resource "aws_apigatewayv2_route" "proxy_protected" {
     authorization_type = "CUSTOM"
 
     authorizer_id = aws_apigatewayv2_authorizer.lambda_authorizer.id
-} #TODO add auth to the auth check
+} 
+
+resource "aws_apigatewayv2_route" "auth_protected" {
+    api_id    = aws_apigatewayv2_api.main.id
+    route_key = "GET /api/users/auth"
+    target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
+    authorization_type = "CUSTOM"
+
+    authorizer_id = aws_apigatewayv2_authorizer.lambda_authorizer.id
+} 
+
+resource "aws_apigatewayv2_route" "proxy" {
+    api_id    = aws_apigatewayv2_api.main.id
+    route_key = "ANY /api/{proxy+}"
+    target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
+}
 
 # HTTP API
 resource "aws_apigatewayv2_api" "main" {
@@ -67,7 +90,7 @@ resource "aws_apigatewayv2_stage" "default" {
     }
 
     default_route_settings {
-        logging_level      = "INFO"   # INFO for detailed logging; switch to ERROR for minimal logs
+        logging_level      = "INFO"  
         data_trace_enabled = true    # Logs request/response payloads
         throttling_burst_limit = 5000
         throttling_rate_limit = 10000
@@ -77,7 +100,7 @@ resource "aws_apigatewayv2_stage" "default" {
 # CloudWatch Log Group for API Gateway
 resource "aws_cloudwatch_log_group" "api_gateway" {
     name              = "/aws/api-gateway/${var.project_name}"
-    retention_in_days = 7  # Adjust retention policy as needed
+    retention_in_days = 7 
     tags = {
         Name = "${var.project_name}-api-logs"
     }
@@ -128,13 +151,6 @@ resource "aws_iam_policy" "api_gateway_logging_policy" {
 resource "aws_iam_role_policy_attachment" "api_gateway_logs_attach" {
     role       = aws_iam_role.api_gateway_logs.name
     policy_arn = aws_iam_policy.api_gateway_logging_policy.arn
-}
-
-# Route
-resource "aws_apigatewayv2_route" "proxy" {
-    api_id    = aws_apigatewayv2_api.main.id
-    route_key = "ANY /api/{proxy+}"
-    target    = "integrations/${aws_apigatewayv2_integration.private_elb.id}"
 }
 
 # Integration

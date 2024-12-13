@@ -32,7 +32,8 @@ resource "aws_db_instance" "rds_instance" {
   username                = local.db_username 
   password                = local.db_password 
   db_subnet_group_name    = aws_db_subnet_group.rds_subnet_group.name
-  vpc_security_group_ids  = var.security_group_ids  # Security Group
+  vpc_security_group_ids  = var.security_group_ids  
+  multi_az = true
 
   skip_final_snapshot = true
   

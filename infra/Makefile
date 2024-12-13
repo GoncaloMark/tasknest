@@ -1,7 +1,4 @@
-.PHONY: create destroy locals
-
-create:
-	terraform apply -auto-aprove
+.PHONY: destroy locals
 
 destroy:
 	aws ecr delete-repository --repository-name authorizer-repo --force
